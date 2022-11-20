@@ -18,7 +18,6 @@ my %WriteMakefileArgs = (
   },
   "DISTNAME" => "Geo-FIT",
   "EXE_FILES" => [
-    "bin/fitdump",
     "script/fit2tcx.pl",
     "script/fitdump.pl"
   ],
@@ -29,7 +28,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => 0
   },
-  "VERSION" => "1.01",
+  "VERSION" => "1.02",
   "test" => {
     "TESTS" => "t/*.t"
   }
