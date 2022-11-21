@@ -19,7 +19,8 @@ my %WriteMakefileArgs = (
   "DISTNAME" => "Geo-FIT",
   "EXE_FILES" => [
     "script/fit2tcx.pl",
-    "script/fitdump.pl"
+    "script/fitdump.pl",
+    "script/locations2gpx.pl"
   ],
   "LICENSE" => "perl",
   "MIN_PERL_VERSION" => "5.008",
