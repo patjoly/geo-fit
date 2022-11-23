@@ -2,16 +2,40 @@
 use strict;
 use warnings;
 
+our $VERSION = '1.02';
+
+=encoding utf-8
+
+=head1 NAME
+
+locations2gpx.pl - script to convert a FIT locations file to gpx format
+
+=head1 SYNOPSIS
+
+  locations2gpx.pl --help
+  locations2gpx.pl [ --outfile=$filename --force --indent=# --time_offset=# ] $fit_locations_file
+
+=head1 DESCRIPTION
+
+C<locations2gpx.pl> reads the contents of a FIT file containing the locations saved on a GPS device and converts it to a GPX file as waypoints.
+
+The converted file will have the same basename as the I<$fit_locations_file> but with a I<*.gpx> extension. The name of the converted file may be overriden with with option C<--outfile>.
+
+=cut
+
 use Geo::FIT;
 use Getopt::Long;
 use HTML::Entities qw( encode_entities encode_entities_numeric );
 
-my ($force, $time_offset, $indent_n, $indent) = (0, 0, 2);
-sub usage { "Usage: $0 [ --force --indent=# --time_offset=# ] tcx_file\n" }
-GetOptions( "force"          =>  \$force,
+my ($force, $time_offset, $indent_n, $indent, $outfile, $help) = (0, 0, 2);
+sub usage { "Usage: $0 [ --help --outfile=<fname> --force --indent=# --time_offset=# ] fit_locations_file\n" }
+GetOptions( "outfile=s"      =>  \$outfile,
             "indent=i"       =>  \$indent_n,
-            "time_offset=i"  =>  \$time_offset
+            "force"          =>  \$force,
+            "time_offset=i"  =>  \$time_offset,
+            "help"           =>  \$help,
 )  or die usage();
+die usage() if $help;
 $indent = " " x $indent_n;
 
 my ($file, $gpx_file);
@@ -21,8 +45,36 @@ for (@ARGV) {
     die "No file named $file found"  unless -f $file
 }
 
-($gpx_file = $file) =~ s/(?i:.fit)$/.gpx/i;
+if (defined $outfile) {
+    $gpx_file = $outfile
+} else {
+    ($gpx_file = $file) =~ s/(?i:.fit)$/.gpx/i
+}
 die "File $gpx_file already exists\n" if -f $gpx_file and !$force;
+
+=head2 Options
+
+=over 4
+
+=item C<< --outfile=I<$filename> >>
+
+specifies the name of the converted file instead of the default to simply change the extension to I<*.gpx>.
+
+=item C<< --force >>
+
+overwrites an existing file if true.
+
+=item C<< --indent=# >>
+
+specifies the number of spaces to use for indentation of the XML in the GPX file. The default is 2.
+
+=item C<< --time_offset=I<#> >>
+
+adds a time offset to the timestamp of waypoints, where I<#> refers to the number of seconds by which to offset by.
+
+=back
+
+=cut
 
 my ($fit, @id, @locations);
 
@@ -213,3 +265,40 @@ sub _print_wpt {
 	printf "%s</wpt>\n", $indent
 }
 
+=head1 DEPENDENCIES
+
+L<Geo::FIT>
+
+=head1 SEE ALSO
+
+L<Geo::Gpx>
+
+=head1 BUGS AND LIMITATIONS
+
+No bugs have been reported.
+
+Please report any bugs or feature requests to C<bug-geo-gpx@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org>.
+
+=head1 AUTHOR
+
+Patrick Joly
+
+=head1 VERSION
+
+1.02
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2022, Patrick Joly C<< patjol@cpan.org >>. All rights reserved.
+
+This module is free software; you can redistribute it and/or modify it under the same terms as Perl itself. See L<perlartistic>.
+
+=head1 DISCLAIMER OF WARRANTY
+
+BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION.
+
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENSE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+=cut
+
+1;
