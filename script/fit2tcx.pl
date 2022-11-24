@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-
 use strict;
 use warnings;
 
@@ -13,167 +12,108 @@ fit2tcx.pl - script to convert a FIT file to a TCX file
 
 =head1 SYNOPSIS
 
-  fit2tcx -show_version=1
-  fit2tcx [ options ] $FIT_activity_file [ $new_filename ]
+  fit2tcx.pl --help
+  fit2tcx.pl [ --must=$list --tp_exclude=$list --indent=# --verbose ] $fit_activity_file [ $new_filename ]
 
 =head1 DESCRIPTION
 
-C<fit2tcx.pl> reads the contents of a I<$FIT_activity_file> and converts it to correspoding TCX format. If <$new_filename> is provided, writes the resulting TCX content to it, otherwise prints the content to standard output.
+C<fit2tcx.pl> reads the contents of a I<$fit_activity_file> and converts it to correspoding TCX format. If <$new_filename> is provided, writes the resulting TCX content to it, otherwise prints the content to standard output.
 
 =cut
 
+use Geo::FIT;
 use POSIX qw(strftime);
 use IO::Handle;
 use FileHandle;
+use Getopt::Long;
 use Time::Local;
 
-BEGIN {
-  STDERR->autoflush(1);
+my ($must, $tp_exclude, $indent_n, $verbose, $help) = ('Time', '', 2, 0);
+sub usage { "Usage: $0 [ --help --must=\$list --tp_exclude=\$list --indent=# --verbose ] \$fit_activity_file [ \$new_filename ]\n" }
+GetOptions( "must=s"       =>  \$must,
+            "tp_exclude=s" =>  \$tp_exclude,
+            "indent=i"     =>  \$indent_n,
+            "verbose"      =>  \$verbose,
+            "help"         =>  \$help,
+)  or die usage();
+die usage() if $help;
 
-  my ($me, $conf);
-  ($me = $0) =~ s%^.*/|-(old|new)$%%g if !defined $me;
-  $conf = $ENV{HOME} . '/.' . $me . '.pl' if !defined $conf;
-
-  local *C;
-  my $expr;
-
-  if (open(C, "< $conf")) {
-    {local $/; $expr = <C>;}
-    close(C);
-  }
-
-  eval $expr if defined $expr
-}
-
-use Geo::FIT;
-
-=head2 Options
-
-=over 4
-
-=item C<-tplimit => I<number>
-
-tries to limit the number of trackpoints to I<number>.
-
-=item C<-must => I<list>
-
-specifies a comma separated list of TCX elements which must be included in trackpoints.
-
-C<fit2tcx> convert each C<record> message to a trackpoint in TCX format, examines whether or not any of the elements in the list are defined, and drop the trackpoint if not.
-
-Some map services seem to require a TCX file created with C<-must=Time,Position> option.
-
-=item C<-tpexclude = >I<list>
-
-specifies a comma separated list of TCX elements which should be excluded from C<Trackpoint> elements in I<TCX file>.
-
-For instance, with C<-tpexclude = AltitudeMeters> option, C<fit2tcx> makes a TCX file including no altitude data in C<Trackpoint>s.
-
-=item C<-include_creator = 0>
-
-specifies that a C<Creator> section should be excluded.
-
-=item C<-lap => I<list>
-
-specifies a comma separated list of lap indices (0, 1, ...) which should be included in I<TCX file>.
-
-Each element of I<list> must be of the form I<index> or I<start>C<->I<end>.
-
-I<index> is treated as an abbreviation of I<index>C<->I<index>.
-
-I<start>C<->I<end> implies that only laps with indices C<< >= I<start> >> and C<< <= I<end> >>, should be included in I<TCX file>.
-
-I<start> or I<end> may be one of an empty string, asterisc (C<*>), or the word C<ALL>, which are treated as C<0> when used as I<start>, or C<65534> when used as I<end>.
-
-For instance, any of C<-lap=->, C<-lap=*>, or C<-lap=all> is treated as C<-lap=0-65534>.
-
-=item C<-tpmask => I<list>
-
-specifies a colon or space separated list of I<region>s, in which trackpoinsts must be excluded from I<TCX file>.
-
-A I<region> must be a comma separated quadruple of the form I<lat_sw>C<,>I<long_sw>C<,>I<lat_ne>C<,>I<long_ne>. I<lat_*> must be degrees of latitudes, and I<long_*> must be degrees of longitudes. Suffices I<_sw> and I<_ne> stand for "south west" and "north east", respectively.
-
-Trackpoints in the "rectangle" (including borders) enclosed with paralles and meridians determined by the above latitudes and longitudes, are not written to I<TCX file>.
-
-=item C<-show_version = 1>
-
-shows the version string of this program, and exits.
-
-=item C<-verbose = 1>
-
-shows FIT file header and trailing CRC information on C<stdout>.
-
-=back
-
-=cut
-
-my ($debug, $verbose, $indent_step, $pw_fix, $pw_fix_b, $tplimit, $tplimit_smart, $must, $double_precision, $include_creator, $tcdns, $tcdxsd, $fcns, $fcxsd, $tpxns, $tpxxsd, $lxns, $lxxsd, $lap, $lap_start, $lap_max, $tpmask, $tpfake, $tpexclude, $show_version);
-
-$debug = 0 if !defined $debug;
-$verbose = 0 if !defined $verbose;
-$indent_step = 2 if !defined $indent_step;
-$pw_fix = 1 if !defined $pw_fix;
-$pw_fix_b = 0 if !defined $pw_fix_b;
-$tplimit = 0 if !defined $tplimit;
-$tplimit_smart = 1 if !defined $tplimit_smart;
-$must = 'Time' if !defined $must;
-$double_precision = 7 if !defined $double_precision;
-$include_creator = 1 if !defined $include_creator;
-$tcdns = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2' if !defined $tcdns;
-$tcdxsd = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd' if !defined $tcdxsd;
-$fcns = 'http://www.garmin.com/xmlschemas/FatCalories/v1' if !defined $fcns;
-$fcxsd = 'http://www.garmin.com/xmlschemas/fatcalorieextensionv1.xsd' if !defined $fcxsd;
-$tpxns = 'http://www.garmin.com/xmlschemas/ActivityExtension/v2' if !defined $tpxns;
-$tpxxsd = 'http://www.garmin.com/xmlschemas/ActivityExtensionv2.xsd' if !defined $tpxxsd;
-$lxns = $tpxns if !defined $lxns;
-$lxxsd = $tpxxsd if !defined $lxxsd;
-$lap = '' if !defined $lap;
-$lap_start = 0 if !defined $lap_start;
-$lap_max = ~(~0 << 16) - 1 if !defined $lap_max;
-$tpmask = '' if !defined $tpmask;
-$tpfake = '' if !defined $tpfake;
-$tpexclude = '' if !defined $tpexclude;
-$show_version = 0 if !defined $show_version;
-
-my $version = "0.13";
-
-if ($show_version) {
-  print $version, "\n";
-  exit;
-}
-
-my @must = split /,/, $must;
-my @tpexclude = split /,/, $tpexclude;
-my ($from, $to) = qw(- -);
-
+my ($from, $to);
 if (@ARGV) {
   $from = shift @ARGV;
   @ARGV and $to = shift @ARGV;
 }
 
+# consider adding $double_precision to GetOptions(), renaming $pf to $print_format
+my $double_precision = 7;
+my $pf = $double_precision eq '' ? 'g' : '.' . $double_precision . 'f';
+
+my (@must, @tp_exclude);
+@must      = split /,/, $must;
+@tp_exclude = split /,/, $tp_exclude;
+
+=head2 Options
+
+=over 4
+
+=item C<< --must=I<list> >>
+
+specifies a comma separated list of TCX elements which must be included in trackpoints.
+
+C<fit2tcx.pl> convert each C<record> message to a trackpoint in TCX format, examines whether or not any of the elements in the list are defined, and drop the trackpoint if not.
+
+Some map services seem to require a TCX file created with C<-must=Time,Position> option.
+
+=item C<< --tp_exclude=I<list> >>
+
+specifies a comma separated list of TCX elements which should be excluded from C<Trackpoint> elements in I<TCX file>.
+
+For instance, with C<< --tp_exclude=AltitudeMeters >>, the resulting TCX file will contain no altitude data in it's C<Trackpoint>s.
+
+=item C<< --indent=I<#> >>
+
+specifies the number of spaces to use in indenting the XML tags of the TCX file.
+
+=item C<< --verbose >>
+
+shows FIT file header and trailing CRC information on standard output.
+
+=back
+
+=cut
+
+# Parameters (were options in the initial version)
+my $pw_fix = 1;
+my $pw_fix_b = 0;
+my $tplimit = 0;
+my $tplimit_smart = 1;
+my $include_creator = 1;
+my $lap = '';
+my $lap_start = 0;
+my $lap_max = ~(~0 << 16) - 1;
+my $tpmask = '';
+my $tpfake = '';
+
+# Parameters
+my $tcdns = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
+my $tcdxsd = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd';
+my $fcns = 'http://www.garmin.com/xmlschemas/FatCalories/v1';
+my $fcxsd = 'http://www.garmin.com/xmlschemas/fatcalorieextensionv1.xsd';
+my $tpxns = 'http://www.garmin.com/xmlschemas/ActivityExtension/v2';
+my $tpxxsd = 'http://www.garmin.com/xmlschemas/ActivityExtensionv2.xsd';
+my $lxns = $tpxns;
+my $lxxsd = $tpxxsd;
 my (%xmllocation, @xmllocation);
+$xmllocation{$tpxns} = $tpxxsd;
+push @xmllocation, $tpxns, $tpxxsd;
+$xmllocation{$fcns} = $fcxsd;
+push @xmllocation, $fcns, $fcxsd;
+$xmllocation{$lxns} = $lxxsd;
+push @xmllocation, $lxns, $lxxsd;
+$xmllocation{$tcdns} = $tcdxsd;
+push @xmllocation, $tcdns, $tcdxsd;
 
-if (!defined $xmllocation{$tpxns}) {
-  $xmllocation{$tpxns} = $tpxxsd;
-  push @xmllocation, $tpxns, $tpxxsd;
-}
-
-if (!defined $xmllocation{$fcns}) {
-  $xmllocation{$fcns} = $fcxsd;
-  push @xmllocation, $fcns, $fcxsd;
-}
-
-if (!defined $xmllocation{$lxns}) {
-  $xmllocation{$lxns} = $lxxsd;
-  push @xmllocation, $lxns, $lxxsd;
-}
-
-if (!defined $xmllocation{$tcdns}) {
-  $xmllocation{$tcdns} = $tcdxsd;
-  push @xmllocation, $tcdns, $tcdxsd;
-}
-
-my $indent = ' ' x $indent_step;
+my $indent = ' ' x $indent_n;
 
 my $start = <<EOF;
 <?xml version="1.0" encoding="UTF-8" standalone="no" ?>
@@ -186,9 +126,8 @@ $indent</Activities>
 </TrainingCenterDatabase>
 EOF
 
-$indent .= ' ' x $indent_step;
+$indent .= ' ' x $indent_n;
 
-my $pf = $double_precision eq '' ? 'g' : '.' . $double_precision . 'f';
 my @with_ushort_value_def = ('sub' => [+{'name' => 'Value', 'format' => 'u'}]);
 
 my %activity_def = (
@@ -476,7 +415,7 @@ sub cb_record {
 
   my ($miss, $k);
 
-  foreach $k (@tpexclude) {
+  foreach $k (@tp_exclude) {
     delete $tp{$k};
   }
 
@@ -659,7 +598,7 @@ sub output {
     elsif (ref $sub eq 'ARRAY') {
       $T->print("\n");
 
-      my $subindent = $indent . ' ' x $indent_step;
+      my $subindent = $indent . ' ' x $indent_n;
       my $i;
 
       for ($i = 0 ; $i < @$sub ;) {
@@ -1005,10 +944,6 @@ if (@$av) {
   $T->print($end);
   $T->close;
 }
-
-=head2 Per user configuration file C<.fit2tcx.pl>
-
-C<fit2tcx.pl> evaluates the contents of the file C<.fit2tcx.pl> in your home directory if it exists, before starting conversion. So, in the file, you can set appropriate values to scalar variables of the same names of the above options with leading hyphens removed, and will get the same effects as giving the command line options.
 
 =head1 DEPENDENCIES
 
