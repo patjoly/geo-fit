@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 =encoding utf-8
 
@@ -285,7 +285,7 @@ Patrick Joly
 
 =head1 VERSION
 
-1.02
+1.03
 
 =head1 LICENSE AND COPYRIGHT
 
