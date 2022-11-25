@@ -1,6 +1,5 @@
 package Geo::FIT;
-
-# use strict;
+use strict;
 use warnings;
 
 our $VERSION = '1.03';
@@ -31,28 +30,24 @@ The module also provides a script to read and print the contents for FIT files (
 
 =cut
 
+use Carp qw/ croak /;
 use FileHandle;
 use POSIX qw(BUFSIZ);
 use Time::Local;
 use Scalar::Util qw(looks_like_number);
 
+my $uint64_invalid;
 BEGIN {
-  my $uint64_invalid = undef;
-
-  eval {
-    $uint64_invalid = unpack('Q', pack('a', -1));
-  };
-
+  eval { $uint64_invalid = unpack('Q', pack('a', -1)) };
   unless (defined $uint64_invalid) {
     require Math::BigInt;
-    import Math::BigInt;
+    import  Math::BigInt
   }
 }
 
 require Exporter;
-@ISA = qw(Exporter);
-
-@EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
              FIT_ENUM
              FIT_SINT8
              FIT_UINT8
@@ -134,7 +129,7 @@ returns the endian (0 for little endian and 1 for big endian) of the current sys
 
 =cut
 
-$version_major_scale = 100;
+my $version_major_scale = 100;
 
 sub version_major {
   my ($self, $ver) = @_;
@@ -159,7 +154,7 @@ sub version_minor {
   }
 }
 
-@version = &version_major(undef, $VERSION);
+my @version = &version_major(undef, $VERSION);
 
 sub version_string {
   my $self = shift;
@@ -176,7 +171,7 @@ sub version {
   }
 }
 
-$my_endian = unpack('L', pack('N', 1)) == 1 ? 1 : 0;
+my $my_endian = unpack('L', pack('N', 1)) == 1 ? 1 : 0;
 
 sub my_endian {
   $my_endian;
@@ -299,8 +294,8 @@ apply I<endian converter> to the specified part of the scalar.
 
 =cut
 
-$protocol_version_major_shift = 4;
-$protocol_version_minor_mask = (1 << $protocol_version_major_shift) - 1;
+my $protocol_version_major_shift = 4;
+my $protocol_version_minor_mask = (1 << $protocol_version_major_shift) - 1;
 
 sub protocol_version_major {
   my ($self, $ver) = @_;
@@ -336,9 +331,9 @@ sub protocol_version_from_string {
   }
 }
 
-$protocol_version = &protocol_version_from_string(undef, "2.3");
-@protocol_version = &protocol_version_major(undef, $protocol_version);
-$protocol_version_header_crc_started = &protocol_version_from_string(undef, "1.0");
+my $protocol_version = &protocol_version_from_string(undef, "2.3");
+my @protocol_version = &protocol_version_major(undef, $protocol_version);
+my $protocol_version_header_crc_started = &protocol_version_from_string(undef, "1.0");
 
 sub protocol_version_string {
   my $self = shift;
@@ -355,7 +350,7 @@ sub protocol_version {
   }
 }
 
-$profile_version_scale = 100;
+my $profile_version_scale = 100;
 
 sub profile_version_major {
   my ($self, $ver) = @_;
@@ -384,15 +379,17 @@ sub profile_version_from_string {
   my ($major, $minor) = split /\./, $s, 2;
 
   if (wantarray) {
-    ($major + 0, $minor & $profile_version_minor_mask);
+      croak "There is a bug when called in list context, this should be resolved soon";
+      # $profile_version_minor_mask has not been declared nor is it used anywhere else
+      # ($major + 0, $minor & $profile_version_minor_mask);
   }
   else {
     $major * $profile_version_scale + $minor % $profile_version_scale;
   }
 }
 
-$profile_version = &profile_version_from_string(undef, "20.21");
-@profile_version = &profile_version_major(undef, $profile_version);
+my $profile_version = &profile_version_from_string(undef, "20.21");
+my @profile_version = &profile_version_major(undef, $profile_version);
 
 sub profile_version_string {
   my $self = shift;
@@ -420,7 +417,7 @@ for ($crc_poly_deg = 0, $x = $crc_poly ; $x >>= 1 ;) {
   ++$crc_poly_deg;
 }
 
-$crc_octets = int($crc_poly_deg / 8 + 0.5);
+my $crc_octets = int($crc_poly_deg / 8 + 0.5);
 
 for ($crc_poly_rev = 0, $y = 1, $x = 2 ** ($crc_poly_deg - 1) ; $x ;) {
   $crc_poly_rev |= $y if $x & $crc_poly;
@@ -428,7 +425,7 @@ for ($crc_poly_rev = 0, $y = 1, $x = 2 ** ($crc_poly_deg - 1) ; $x ;) {
   $x >>= 1;
 }
 
-@crc_table = ();
+my @crc_table = ();
 
 for ($i = 0 ; $i < 2 ** 8 ; ++$i) {
   my $r = $i;
@@ -463,7 +460,7 @@ sub error_callback {
   my $self = shift;
 
   if (@_) {
-    if (&safe_isa($_[0], CODE)) {
+    if (&safe_isa($_[0], 'CODE')) {
       $self->{error_callback_argv} = [@_[1 .. $#_]];
       $self->{error_callback} = $_[0];
     }
@@ -487,10 +484,10 @@ sub error {
     $fit = $self->file;
     $fit .= ': ' if $fit ne '';
 
-    $self->{error} = "$p::$subr\#$l\@$fn: $fit$_[0]";
+    $self->{error} = "${p}::$subr\#$l\@$fn: $fit$_[0]";
 
-    if (&safe_isa($self->{error_callback}, CODE)) {
-      my $argv = &safe_isa($self->{error_callback_argv}, ARRAY) ? $self->{error_callback_argv} : [];
+    if (&safe_isa($self->{error_callback}, 'CODE')) {
+      my $argv = &safe_isa($self->{error_callback_argv}, 'ARRAY') ? $self->{error_callback_argv} : [];
 
       $self->{error_callback}->($self, @$argv);
     }
@@ -761,18 +758,18 @@ sub fill_buffer {
   1;
 }
 
-$header_template = 'C C v V V';
-$header_length = length(pack($header_template));
+my $header_template = 'C C v V V';
+my $header_length = length(pack($header_template));
 
 sub FIT_HEADER_LENGTH {
   $header_length;
 }
 
-$FIT_signature_string = '.FIT';
-$FIT_signature = unpack('V', $FIT_signature_string);
+my $FIT_signature_string = '.FIT';
+my $FIT_signature = unpack('V', $FIT_signature_string);
 
-$header_crc_template = 'v';
-$header_crc_length = length(pack($header_crc_template));
+my $header_crc_template = 'v';
+my $header_crc_length = length(pack($header_crc_template));
 
 sub fetch_header {
   my $self = shift;
@@ -871,39 +868,39 @@ sub FIT_UINT64() {15;}
 sub FIT_UINT64Z() {16;}
 sub FIT_BASE_TYPE_MAX() {FIT_UINT64Z;}
 
-$rechd_offset_compressed_timestamp_header = 7;
-$rechd_mask_compressed_timestamp_header = 1 << $rechd_offset_compressed_timestamp_header;
-$rechd_offset_cth_local_message_type = 5;
-$rechd_length_cth_local_message_type = 2;
-$rechd_mask_cth_local_message_type = ((1 << $rechd_length_cth_local_message_type) - 1) << $rechd_offset_cth_local_message_type;
-$rechd_length_cth_timestamp = $rechd_offset_cth_local_message_type;
-$rechd_mask_cth_timestamp = (1 << $rechd_length_cth_timestamp) - 1;
-$rechd_offset_definition_message = 6;
-$rechd_mask_definition_message = 1 << $rechd_offset_definition_message;
-$rechd_offset_devdata_message = 5;
-$rechd_mask_devdata_message = 1 << $rechd_offset_devdata_message;
-$rechd_length_local_message_type = 4;
-$rechd_mask_local_message_type = (1 << $rechd_length_local_message_type) - 1;
-$cthd_offset_local_message_type = 5;
-$cthd_length_local_message_type = 2;
-$cthd_mask_local_message_type = (1 << $cthd_length_local_message_type) - 1;
-$cthd_length_time_offset = 5;
-$cthd_mask_time_offset = (1 << $cthd_length_time_offset) - 1;
+my $rechd_offset_compressed_timestamp_header = 7;
+my $rechd_mask_compressed_timestamp_header = 1 << $rechd_offset_compressed_timestamp_header;
+my $rechd_offset_cth_local_message_type = 5;
+my $rechd_length_cth_local_message_type = 2;
+my $rechd_mask_cth_local_message_type = ((1 << $rechd_length_cth_local_message_type) - 1) << $rechd_offset_cth_local_message_type;
+my $rechd_length_cth_timestamp = $rechd_offset_cth_local_message_type;
+my $rechd_mask_cth_timestamp = (1 << $rechd_length_cth_timestamp) - 1;
+my $rechd_offset_definition_message = 6;
+my $rechd_mask_definition_message = 1 << $rechd_offset_definition_message;
+my $rechd_offset_devdata_message = 5;
+my $rechd_mask_devdata_message = 1 << $rechd_offset_devdata_message;
+my $rechd_length_local_message_type = 4;
+my $rechd_mask_local_message_type = (1 << $rechd_length_local_message_type) - 1;
+my $cthd_offset_local_message_type = 5;
+my $cthd_length_local_message_type = 2;
+my $cthd_mask_local_message_type = (1 << $cthd_length_local_message_type) - 1;
+my $cthd_length_time_offset = 5;
+my $cthd_mask_time_offset = (1 << $cthd_length_time_offset) - 1;
 
-$defmsg_min_template = 'C C C S C';
-$defmsg_min_length = length(pack($defmsg_min_template));
+my $defmsg_min_template = 'C C C S C';
+my $defmsg_min_length = length(pack($defmsg_min_template));
 
-$deffld_template = 'C C C';
-$deffld_length = length(pack($deffld_template));
-$deffld_mask_endian_p = 1 << 7;
-$deffld_mask_type = (1 << 5) - 1;
+my $deffld_template = 'C C C';
+my $deffld_length = length(pack($deffld_template));
+my $deffld_mask_endian_p = 1 << 7;
+my $deffld_mask_type = (1 << 5) - 1;
 
-$devdata_min_template = 'C';
-$devdata_min_length = length(pack($devdata_min_template));
-$devdata_deffld_template = 'C C C';
-$devdata_deffld_length = length(pack($deffld_template));
+my $devdata_min_template = 'C';
+my $devdata_min_length = length(pack($devdata_min_template));
+my $devdata_deffld_template = 'C C C';
+my $devdata_deffld_length = length(pack($deffld_template));
 
-@invalid = (0xFF) x ($deffld_mask_type + 1);
+my @invalid = (0xFF) x ($deffld_mask_type + 1);
 
 $invalid[FIT_SINT8] = 0x7F;
 $invalid[FIT_SINT16] = 0x7FFF;
@@ -1001,16 +998,16 @@ sub invalid {
   $invalid[$type & $deffld_mask_type];
 }
 
-@size = (1) x ($deffld_mask_type + 1);
+my @size = (1) x ($deffld_mask_type + 1);
 
 $size[FIT_SINT16] = $size[FIT_UINT16] = $size[FIT_UINT16Z] = 2;
 $size[FIT_SINT32] = $size[FIT_UINT32] = $size[FIT_UINT32Z] = $size[FIT_FLOAT32] = 4;
 $size[FIT_FLOAT64] = $size[FIT_SINT64] = $size[FIT_UINT64] = $size[FIT_UINT64Z] = 8;
 
-@template = ('C') x ($deffld_mask_type + 1);
-@packfactor = (1) x ($deffld_mask_type + 1);
-@packfilter = (undef) x ($deffld_mask_type + 1);
-@unpackfilter = (undef) x ($deffld_mask_type + 1);
+my @template = ('C') x ($deffld_mask_type + 1);
+my @packfactor = (1) x ($deffld_mask_type + 1);
+my @packfilter = (undef) x ($deffld_mask_type + 1);
+my @unpackfilter = (undef) x ($deffld_mask_type + 1);
 
 $template[FIT_SINT8] = 'c';
 $template[FIT_SINT16] = 's';
@@ -1033,7 +1030,7 @@ else {
   $unpackfilter[FIT_UINT64] = $unpackfilter[FIT_UINT64Z] = \&unpackfilter_uint64;
 }
 
-%named_type =
+my %named_type =
   (
 
    'file' => +{
@@ -3189,7 +3186,7 @@ while ((undef, $typedesc) = each %named_type) {
   }
 }
 
-$use_gmtime = 0;
+my $use_gmtime = 0;
 
 sub use_gmtime {
   my $self = shift;
@@ -3300,7 +3297,7 @@ sub named_type_value {
   }
 }
 
-%msgtype_by_name =
+my %msgtype_by_name =
   (
 
    # =================== Common messages ===================
@@ -4924,9 +4921,9 @@ sub named_type_value {
 
    );
 
-$mesg_name_vs_num = $named_type{mesg_num};
+my $mesg_name_vs_num = $named_type{mesg_num};
 
-%msgtype_by_num =
+my %msgtype_by_num =
   (
 
    # =================== Unknown messages ===================
@@ -5202,8 +5199,8 @@ sub data_message_callback {
   $_[0]->{data_message_callback};
 }
 
-$msgnum_anon = $invalid[FIT_UINT16];
-$msgname_anon = '';
+my $msgnum_anon = $invalid[FIT_UINT16];
+my $msgname_anon = '';
 
 sub data_message_callback_by_num {
   my $self = shift;
@@ -5314,7 +5311,9 @@ sub syscallback_devdata_id {
     $warn = 1;
   }
   elsif ($T_id != FIT_UINT8 && $T_id != FIT_BYTE) {
-    $emsg = "base type of application_id is $type_name[$T_id] ($T_id)";
+    croak "There is a bug here, this should be resolved soon";
+    # $type_name has not been declared in this scope need to figure out what it should be
+    # $emsg = "base type of application_id is $type_name [$T_id] ($T_id)";
   }
   elsif (!defined $i_index) {
     $emsg = "no developer_data_index";
@@ -5374,7 +5373,9 @@ sub syscallback_devdata_field_desc {
     $emsg = 'no base_type_id';
   }
   elsif ($T_base_type_id != FIT_UINT8) {
-    $emsg = "base type of base_type_id is $type_name[$T_base_type_id] ($T_base_type_id)";
+    croak "There is a bug here, this should be resolved soon";
+    # $type_name has not been declared in this scope need to figure out what it should be
+    # $emsg = "base type of base_type_id is $type_name [$T_base_type_id] ($T_base_type_id)";
   }
   elsif (!defined $i_field_name) {
     $emsg = 'no field_name';
@@ -5400,7 +5401,7 @@ sub syscallback_devdata_field_desc {
 
   my $base_type = $v->[$i_base_type_id];
 
-  if ($base_type == $I_base_type) {
+  if ($base_type == $I_base_type_id) {
     $self->error("invalid base type ($base_type)");
     return undef;
   }
@@ -6201,7 +6202,7 @@ sub fetch {
   }
 }
 
-@type_name = ();
+my @type_name = ();
 
 $type_name[FIT_ENUM] = 'ENUM';
 $type_name[FIT_SINT8] = 'SINT8';
