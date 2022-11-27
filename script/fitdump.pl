@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-
 use strict;
 use warnings;
 
@@ -13,8 +12,8 @@ fitdump.pl - script to print the contents of Garmin FIT files to standard output
 
 =head1 SYNOPSIS
 
-  fitdump -show_version=1
-  fitdump [ -semicircles_to_deg=(0|1) -mps_to_kph=(0|1) -use_gmtime=(0|1) -maybe_chained=(0|1) ] [ $FIT_file ... ]
+  fitdump.pl -show_version=1
+  fitdump.pl [ -semicircles_to_deg=(0|1) -mps_to_kph=(0|1) -use_gmtime=(0|1) -maybe_chained=(0|1) ] [ $FIT_file ... ]
 
 =head1 DESCRIPTION
 

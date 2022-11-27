@@ -8089,7 +8089,7 @@ sub value_processed {
         $num . " " . $unit;
       }
     }
-    elsif ($scale > 0) {
+    elsif (defined $scale and $scale > 0) {
       my $below_pt = int(log($scale + 9) / log(10));
 
       sprintf("%.${below_pt}f", $num);
@@ -8345,7 +8345,11 @@ $type_name[FIT_UINT16Z] = 'UINT16Z';
 $type_name[FIT_UINT32Z] = 'UINT32Z';
 $type_name[FIT_BYTE] = 'BYTE';
 
-sub isnan { !defined($_[0] <=> 9**9**9) }
+sub isnan {
+    my $ret_val;
+    do { no warnings 'numeric'; $ret_val = !defined( $_[0] <=> 9**9**9 ) };
+    return $ret_val
+}
 
 sub print_all_fields {
   my ($self, $desc, $v, %opt) = @_;
