@@ -303,7 +303,7 @@ Please visit the project page at: [https://github.com/patjoly/geo-fit](https://g
 
 # VERSION
 
-1.02
+1.03
 
 # LICENSE AND COPYRIGHT
 
