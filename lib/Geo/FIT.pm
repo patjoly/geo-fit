@@ -388,7 +388,7 @@ sub profile_version_from_string {
   }
 }
 
-my $profile_version = &profile_version_from_string(undef, "20.21");
+my $profile_version = &profile_version_from_string(undef, "21.94");
 my @profile_version = &profile_version_major(undef, $profile_version);
 
 sub profile_version_string {
@@ -1121,6 +1121,7 @@ my %named_type =
      'segment_leaderboard_entry' => 149,
      'segment_point' => 150,
      'segment_file' => 151,
+     'workout_session' => 158,
      'watchface_settings' => 159,
      'gps_metadata' => 160,
      'camera_event' => 161,
@@ -1143,6 +1144,18 @@ my %named_type =
      'field_description' => 206,
      'developer_data_id' => 207,
      'magnetometer_data' => 208,
+     'barometer_data' => 209,
+     'one_d_sensor_calibration' => 210,
+     'set' => 225,
+     'stress_level' => 227,
+     'dive_settings' => 258,
+     'dive_gas' => 259,
+     'dive_alarm' => 262,
+     'exercise_title' => 264,
+     'dive_summary' => 268,
+     'jump' => 285,
+     'climb_pro' => 317,
+     'device_aux_battery_info' => 375,
      'mfg_range_min' => 0xFF00,
      'mfg_range_max' => 0xFFFE,
    },
@@ -1242,6 +1255,10 @@ my %named_type =
      'hebrew' => 31,
      'brazilian_portuguese' => 32,
      'indonesian' => 33,
+     'malaysian' => 34,
+     'vietnamese' => 35,
+     'burmese' => 36,
+     'mongolian' => 37,
      'custom' => 254,
    },
 
@@ -1297,6 +1314,10 @@ my %named_type =
      '_base_type' => FIT_UINT8Z,
      'brazilian_portuguese' => 0x01,
      'indonesian' => 0x02,
+     'malaysian' => 0x04,
+     'vietnamese' => 0x08,
+     'burmese' => 0x10,
+     'mongolian' => 0x20,
    },
 
    'time_zone' => +{
@@ -1639,7 +1660,7 @@ my %named_type =
      'warm_up' => 21, # tennis
      'match' => 22, # tennis
      'exercise' => 23, # tennis
-     'challenge' => 24, # tennis
+     'challenge' => 24,
      'indoor_skiing' => 25, # fitness equipment
      'cardio_training' => 26, # training
      'indoor_walking' => 27, # walking/fitness equipment
@@ -1659,7 +1680,7 @@ my %named_type =
      'whitewater' => 41, # kayaking/rafting
      'skate_skiing' => 42, # cross country skiing
      'yoga' => 43, # training
-     'pilates' => 44, # training
+     'pilates' => 44, # fitness equipment
      'indoor_running' => 45, # run/fitness equipment
      'gravel_cycling' => 46, # cycling
      'e_bike_mountain' => 47, # cycling
@@ -1668,6 +1689,18 @@ my %named_type =
      'navigate' => 50,
      'track_me' => 51,
      'map' => 52,
+     'single_gas_diving' => 53, # Diving
+     'multi_gas_diving' => 54, # Diving
+     'gauge_diving' => 55, # Diving
+     'apnea_diving' => 56, # Diving
+     'apnea_hunting' => 57, # Diving
+     'virtual_activity' => 58,
+     'obstacle' => 59, # Used for events where participants run, crawl through mud, climb over walls, etc.
+     'breathing' => 62,
+     'sail_race' => 65, # Sailing
+     'ultra' => 67, # Ultramarathon
+     'indoor_climbing' => 68, # Climbing
+     'bouldering' => 69, # Climbing
      'all' => 254,
    },
 
@@ -1757,6 +1790,11 @@ my %named_type =
      'month_day' => 1,
    },
 
+   'backlight_timeout' => +{
+     '_base_type' => FIT_UINT8,
+     'infinite' => 0,
+   },
+
    'event' => +{
      '_base_type' => FIT_ENUM,
      'timer' => 0,
@@ -1795,6 +1833,7 @@ my %named_type =
      'elev_high_alert' => 45,
      'elev_low_alert' => 46,
      'comm_timeout' => 47,
+     'radar_threat_alert' => 75, # start/stop/marker
    },
 
    'event_type' => +{
@@ -1826,6 +1865,13 @@ my %named_type =
      'unknown' => 3,
    },
 
+   'tone' => +{
+     '_base_type' => FIT_ENUM,
+     'off' => 0,
+     'tone' => 1,
+     'vibrate' => 2,
+     'tone_and_vibrate' => 3,
+   },
    'autoscroll' => +{
      '_base_type' => FIT_ENUM,
      'none' => 0,
@@ -1873,7 +1919,21 @@ my %named_type =
      'repeat_until_power_greater_than' => 13,
      'power_less_than' => 14,
      'power_greater_than' => 15,
+     'training_peaks_tss' => 16,
+     'repeat_until_power_last_lap_less_than' => 17,
+     'repeat_until_max_power_last_lap_less_than' => 18,
+     'power_3s_less_than' => 19,
+     'power_10s_less_than' => 20,
+     'power_30s_less_than' => 21,
+     'power_3s_greater_than' => 22,
+     'power_10s_greater_than' => 23,
+     'power_30s_greater_than' => 24,
+     'power_lap_less_than' => 25,
+     'power_lap_greater_than' => 26,
+     'repeat_until_training_peaks_tss' => 27,
      'repetition_time' => 28,
+     'reps' => 29,
+     'time_only' => 31,
    },
 
    'wkt_step_target' => +{
@@ -1885,6 +1945,13 @@ my %named_type =
      'power' => 4,
      'grade' => 5,
      'resistance' => 6,
+     'power_3s' => 7,
+     'power_10s' => 8,
+     'power_30s' => 9,
+     'power_lap' => 10,
+     'swim_stroke' => 11,
+     'speed_lap' => 12,
+     'heart_rate_lap' => 13,
    },
 
    'goal' => +{
@@ -2059,6 +2126,29 @@ my %named_type =
      'magene' => 107,
      'giant_manufacturing_co' => 108,
      'tigrasport' => 109,
+     'salutron' => 110,
+     'technogym' => 111,
+     'bryton_sensors' => 112,
+     'latitude_limited' => 113,
+     'soaring_technology' => 114,
+     'igpsport' => 115,
+     'thinkrider' => 116,
+     'gopher_sport' => 117,
+     'waterrower' => 118,
+     'orangetheory' => 119,
+     'inpeak' => 120,
+     'kinetic' => 121,
+     'johnson_health_tech' => 122,
+     'polar_electro' => 123,
+     'seesense' => 124,
+     'nci_technology' => 125,
+     'iqsquare' => 126,
+     'leomo' => 127,
+     'ifit_com' => 128,
+     'coros_byte' => 129,
+     'versa_design' => 130,
+     'chileaf' => 131,
+     'cycplus' => 132,
      'development' => 255,
      'healthandlife' => 257,
      'lezyne' => 258,
@@ -2079,37 +2169,69 @@ my %named_type =
      'evesports' => 273,
      'sensitivus_gauge' => 274,
      'podoon' => 275,
+     'life_time_fitness' => 276,
+     'falco_e_motors' => 277,
+     'minoura' => 278,
+     'cycliq' => 279,
+     'luxottica' => 280,
+     'trainer_road' => 281,
+     'the_sufferfest' => 282,
+     'fullspeedahead' => 283,
+     'virtualtraining' => 284,
+     'feedbacksports' => 285,
+     'omata' => 286,
+     'vdo' => 287,
+     'magneticdays' => 288,
+     'hammerhead' => 289,
+     'kinetic_by_kurt' => 290,
+     'shapelog' => 291,
+     'dabuziduo' => 292,
+     'jetblack' => 293,
+     'coros' => 294,
+     'virtugo' => 295,
+     'velosense' => 296,
+     'cycligentinc' => 297,
+     'trailforks' => 298,
+     'mahle_ebikemotion' => 299,
+     'nurvv' => 300,
+     'microprogram' => 301,
+     'zone5cloud' => 302,
+     'greenteg' => 303,
+     'yamaha_motors' => 304,
      'actigraphcorp' => 5759,
    },
 
    'garmin_product' => +{
      '_base_type' => FIT_UINT16,
-     'hrm_bike' => 0, # not present?
      'hrm1' => 1,
-     'axh01' => 2,
+     'axh01' => 2, # AXH01 HRM chipset
      'axb01' => 3,
      'axb02' => 4,
      'hrm2ss' => 5,
      'dsi_alf02' => 6,
      'hrm3ss' => 7,
-     'hrm_run_single_byte_product_id' => 8,
-     'bsm' => 9,
-     'bcm' => 10,
-     'axs01' => 11,
-     'hrm_tri_single_byte_product_id' => 12,
-     'fr225_single_byte_product_id' => 14,
+     'hrm_run_single_byte_product_id' => 8, # hrm_run model for HRM ANT+ messaging
+     'bsm' => 9, # BSM model for ANT+ messaging
+     'bcm' => 10, # BCM model for ANT+ messaging
+     'axs01' => 11, # AXS01 HRM Bike Chipset model for ANT+ messaging
+     'hrm_tri_single_byte_product_id' => 12, # hrm_tri model for HRM ANT+ messaging
+     'hrm4_run_single_byte_product_id' => 13, # hrm4 run model for HRM ANT+ messaging
+     'fr225_single_byte_product_id' => 14, # fr225 model for HRM ANT+ messaging
+     'gen3_bsm_single_byte_product_id' => 15, # gen3_bsm model for Bike Speed ANT+ messaging
+     'gen3_bcm_single_byte_product_id' => 16, # gen3_bcm model for Bike Cadence ANT+ messaging
+     'OHR' => 255, # Garmin Wearable Optical Heart Rate Sensor for ANT+ HR Profile Broadcasting
      'fr301_china' => 473,
      'fr301_japan' => 474,
      'fr301_korea' => 475,
      'fr301_taiwan' => 494,
-     'fr405' => 717,
-     'fr50' => 782,
+     'fr405' => 717, # Forerunner 405
+     'fr50' => 782, # Forerunner 50
      'fr405_japan' => 987,
-     'fr60' => 988,
+     'fr60' => 988, # Forerunner 60
      'dsi_alf01' => 1011,
-     'fr310xt' => 1018,
+     'fr310xt' => 1018, # Forerunner 310
      'edge500' => 1036,
-     'fr110' => 1124,
+     'fr110' => 1124, # Forerunner 110
      'edge800' => 1169,
      'edge500_taiwan' => 1199,
      'edge500_japan' => 1213,
@@ -2126,6 +2248,7 @@ my %named_type =
      'vector_cp' => 1381,
      'edge800_china' => 1386,
      'edge500_china' => 1387,
+     'approach_g10' => 1405,
      'fr610_japan' => 1410,
      'edge500_korea' => 1422,
      'fr70' => 1436,
@@ -2147,9 +2270,9 @@ my %named_type =
      'fr10_japan' => 1688,
      'edge810_japan' => 1721,
      'virb_elite' => 1735,
-     'edge_touring' => 1736,
+     'edge_touring' => 1736, # Also Edge Touring Plus
      'edge510_japan' => 1742,
-     'hrm_tri' => 1743,
+     'hrm_tri' => 1743, # Also HRM-Swim
      'hrm_run' => 1752,
      'fr920xt' => 1765,
      'edge510_asia' => 1821,
@@ -2192,6 +2315,7 @@ my %named_type =
      'fr225' => 2153,
      'fr630' => 2156,
      'fr230' => 2157,
+     'fr735xt' => 2158,
      'vivo_active_apac' => 2160,
      'vector_2' => 2161,
      'vector_2s' => 2162,
@@ -2199,6 +2323,7 @@ my %named_type =
      'fr620_taiwan' => 2173,
      'fr220_taiwan' => 2174,
      'truswing' => 2175,
+     'd2airvenu' => 2187,
      'fenix3_china' => 2188,
      'fenix3_twn' => 2189,
      'varia_headlight' => 2192,
@@ -2208,31 +2333,276 @@ my %named_type =
      'varia_radar_taillight' => 2225,
      'varia_radar_display' => 2226,
      'edge20' => 2238,
+     'edge520_asia' => 2260,
+     'edge520_japan' => 2261,
      'd2_bravo' => 2262,
      'approach_s20' => 2266,
+     'vivo_smart2' => 2271,
+     'edge1000_thai' => 2274,
      'varia_remote' => 2276,
+     'edge25_asia' => 2288,
+     'edge25_jpn' => 2289,
+     'edge20_asia' => 2290,
+     'approach_x40' => 2292,
+     'fenix3_japan' => 2293,
+     'vivo_smart_emea' => 2294,
+     'fr630_asia' => 2310,
+     'fr630_jpn' => 2311,
+     'fr230_jpn' => 2313,
      'hrm4_run' => 2327,
+     'epix_japan' => 2332,
      'vivo_active_hr' => 2337,
      'vivo_smart_gps_hr' => 2347,
      'vivo_smart_hr' => 2348,
+     'vivo_smart_hr_asia' => 2361,
+     'vivo_smart_gps_hr_asia' => 2362,
      'vivo_move' => 2368,
+     'varia_taillight' => 2379,
+     'fr235_asia' => 2396,
+     'fr235_japan' => 2397,
      'varia_vision' => 2398,
      'vivo_fit3' => 2406,
+     'fenix3_korea' => 2407,
+     'fenix3_sea' => 2408,
      'fenix3_hr' => 2413,
+     'virb_ultra_30' => 2417,
      'index_smart_scale' => 2429,
      'fr235' => 2431,
+     'fenix3_chronos' => 2432,
      'oregon7xx' => 2441,
      'rino7xx' => 2444,
+     'epix_korea' => 2457,
+     'fenix3_hr_chn' => 2473,
+     'fenix3_hr_twn' => 2474,
+     'fenix3_hr_jpn' => 2475,
+     'fenix3_hr_sea' => 2476,
+     'fenix3_hr_kor' => 2477,
      'nautix' => 2496,
+     'vivo_active_hr_apac' => 2497,
+     'oregon7xx_ww' => 2512,
      'edge_820' => 2530,
      'edge_explore_820' => 2531,
+     'fr735xt_apac' => 2533,
+     'fr735xt_japan' => 2534,
+     'fenix5s' => 2544,
+     'd2_bravo_titanium' => 2547,
+     'varia_ut800' => 2567, # Varia UT 800 SW
+     'running_dynamics_pod' => 2593,
+     'edge_820_china' => 2599,
+     'edge_820_japan' => 2600,
+     'fenix5x' => 2604,
+     'vivo_fit_jr' => 2606,
+     'vivo_smart3' => 2622,
+     'vivo_sport' => 2623,
+     'edge_820_taiwan' => 2628,
+     'edge_820_korea' => 2629,
+     'edge_820_sea' => 2630,
+     'fr35_hebrew' => 2650,
+     'approach_s60' => 2656,
+     'fr35_apac' => 2667,
+     'fr35_japan' => 2668,
+     'fenix3_chronos_asia' => 2675,
+     'virb_360' => 2687,
+     'fr935' => 2691,
+     'fenix5' => 2697,
+     'vivoactive3' => 2700,
+     'fr235_china_nfc' => 2733,
+     'foretrex_601_701' => 2769,
+     'vivo_move_hr' => 2772,
+     'edge_1030' => 2713,
+     'fr35_sea' => 2727,
+     'vector_3' => 2787,
+     'fenix5_asia' => 2796,
+     'fenix5s_asia' => 2797,
+     'fenix5x_asia' => 2798,
+     'approach_z80' => 2806,
+     'fr35_korea' => 2814,
+     'd2charlie' => 2819,
+     'vivo_smart3_apac' => 2831,
+     'vivo_sport_apac' => 2832,
+     'fr935_asia' => 2833,
+     'descent' => 2859,
+     'vivo_fit4' => 2878,
+     'fr645' => 2886,
+     'fr645m' => 2888,
+     'fr30' => 2891,
+     'fenix5s_plus' => 2900,
+     'Edge_130' => 2909,
+     'edge_1030_asia' => 2924,
+     'vivosmart_4' => 2927,
+     'vivo_move_hr_asia' => 2945,
+     'approach_x10' => 2962,
+     'fr30_asia' => 2977,
+     'vivoactive3m_w' => 2988,
+     'fr645_asia' => 3003,
+     'fr645m_asia' => 3004,
+     'edge_explore' => 3011,
+     'gpsmap66' => 3028,
+     'approach_s10' => 3049,
+     'vivoactive3m_l' => 3066,
+     'approach_g80' => 3085,
+     'edge_130_asia' => 3092,
+     'edge_1030_bontrager' => 3095,
+     'fenix5_plus' => 3110,
+     'fenix5x_plus' => 3111,
+     'edge_520_plus' => 3112,
+     'fr945' => 3113,
+     'edge_530' => 3121,
      'edge_830' => 3122,
-     'sdm4' => 10007,
+     'instinct_esports' => 3126,
+     'fenix5s_plus_apac' => 3134,
+     'fenix5x_plus_apac' => 3135,
+     'edge_520_plus_apac' => 3142,
+     'fr235l_asia' => 3144,
+     'fr245_asia' => 3145,
+     'vivo_active3m_apac' => 3163,
+     'gen3_bsm' => 3192, # gen3 bike speed sensor
+     'gen3_bcm' => 3193, # gen3 bike cadence sensor
+     'vivo_smart4_asia' => 3218,
+     'vivoactive4_small' => 3224,
+     'vivoactive4_large' => 3225,
+     'venu' => 3226,
+     'marq_driver' => 3246,
+     'marq_aviator' => 3247,
+     'marq_captain' => 3248,
+     'marq_commander' => 3249,
+     'marq_expedition' => 3250,
+     'marq_athlete' => 3251,
+     'descent_mk2' => 3258,
+     'gpsmap66i' => 3284,
+     'fenix6S_sport' => 3287,
+     'fenix6S' => 3288,
+     'fenix6_sport' => 3289,
+     'fenix6' => 3290,
+     'fenix6x' => 3291,
+     'hrm_dual' => 3299, # HRM-Dual
+     'hrm_pro' => 3300, # HRM-Pro
+     'vivo_move3_premium' => 3308,
+     'approach_s40' => 3314,
+     'fr245m_asia' => 3321,
+     'edge_530_apac' => 3349,
+     'edge_830_apac' => 3350,
+     'vivo_move3' => 3378,
+     'vivo_active4_small_asia' => 3387,
+     'vivo_active4_large_asia' => 3388,
+     'vivo_active4_oled_asia' => 3389,
+     'swim2' => 3405,
+     'marq_driver_asia' => 3420,
+     'marq_aviator_asia' => 3421,
+     'vivo_move3_asia' => 3422,
+     'fr945_asia' => 3441,
+     'vivo_active3t_chn' => 3446,
+     'marq_captain_asia' => 3448,
+     'marq_commander_asia' => 3449,
+     'marq_expedition_asia' => 3450,
+     'marq_athlete_asia' => 3451,
+     'instinct_solar' => 3466,
+     'fr45_asia' => 3469,
+     'vivoactive3_daimler' => 3473,
+     'legacy_rey' => 3498,
+     'legacy_darth_vader' => 3499,
+     'legacy_captain_marvel' => 3500,
+     'legacy_first_avenger' => 3501,
+     'fenix6s_sport_asia' => 3512,
+     'fenix6s_asia' => 3513,
+     'fenix6_sport_asia' => 3514,
+     'fenix6_asia' => 3515,
+     'fenix6x_asia' => 3516,
+     'legacy_captain_marvel_asia' => 3535,
+     'legacy_first_avenger_asia' => 3536,
+     'legacy_rey_asia' => 3537,
+     'legacy_darth_vader_asia' => 3538,
+     'descent_mk2s' => 3542,
+     'edge_130_plus' => 3558,
+     'edge_1030_plus' => 3570,
+     'rally_200' => 3578, # Rally 100/200 Power Meter Series
+     'fr745' => 3589,
+     'venusq' => 3600,
+     'lily' => 3615,
+     'marq_adventurer' => 3624,
+     'enduro' => 3638,
+     'swim2_apac' => 3639,
+     'marq_adventurer_asia' => 3648,
+     'fr945_lte' => 3652,
+     'descent_mk2_asia' => 3702, # Mk2 and Mk2i
+     'venu2' => 3703,
+     'venu2s' => 3704,
+     'venu_daimler_asia' => 3737,
+     'marq_golfer' => 3739,
+     'venu_daimler' => 3740,
+     'fr745_asia' => 3794,
+     'lily_asia' => 3809,
+     'edge_1030_plus_asia' => 3812,
+     'edge_130_plus_asia' => 3813,
+     'approach_s12' => 3823,
+     'enduro_asia' => 3872,
+     'venusq_asia' => 3837,
+     'edge_1040' => 3843,
+     'marq_golfer_asia' => 3850,
+     'venu2_plus' => 3851,
+     'fr55' => 3869,
+     'instinct_2' => 3888,
+     'fenix7s' => 3905,
+     'fenix7' => 3906,
+     'fenix7x' => 3907,
+     'fenix7s_apac' => 3908,
+     'fenix7_apac' => 3909,
+     'fenix7x_apac' => 3910,
+     'approach_g12' => 3927,
+     'descent_mk2s_asia' => 3930,
+     'approach_s42' => 3934,
+     'epix_gen2' => 3943,
+     'epix_gen2_apac' => 3944,
+     'venu2s_asia' => 3949,
+     'venu2_asia' => 3950,
+     'fr945_lte_asia' => 3978,
+     'vivo_move_sport' => 3982,
+     'approach_S12_asia' => 3986,
+     'fr255_music' => 3990,
+     'fr255_small_music' => 3991,
+     'fr255' => 3992,
+     'fr255_small' => 3993,
+     'approach_g12_asia' => 4001,
+     'approach_s42_asia' => 4002,
+     'descent_g1' => 4005,
+     'venu2_plus_asia' => 4017,
+     'fr955' => 4024,
+     'fr55_asia' => 4033,
+     'vivosmart_5' => 4063,
+     'instinct_2_asia' => 4071,
+     'venusq2' => 4115,
+     'venusq2music' => 4116,
+     'd2_air_x10' => 4125,
+     'hrm_pro_plus' => 4130,
+     'descent_g1_asia' => 4132,
+     'tactix7' => 4135,
+     'edge_explore2' => 4169,
+     'tacx_neo_smart' => 4265, # Neo Smart, Tacx
+     'tacx_neo2_smart' => 4266, # Neo 2 Smart, Tacx
+     'tacx_neo2_t_smart' => 4267, # Neo 2T Smart, Tacx
+     'tacx_neo_smart_bike' => 4268, # Neo Smart Bike, Tacx
+     'tacx_satori_smart' => 4269, # Satori Smart, Tacx
+     'tacx_flow_smart' => 4270, # Flow Smart, Tacx
+     'tacx_vortex_smart' => 4271, # Vortex Smart, Tacx
+     'tacx_bushido_smart' => 4272, # Bushido Smart, Tacx
+     'tacx_genius_smart' => 4273, # Genius Smart, Tacx
+     'tacx_flux_flux_s_smart' => 4274, # Flux/Flux S Smart, Tacx
+     'tacx_flux2_smart' => 4275, # Flux 2 Smart, Tacx
+     'tacx_magnum' => 4276, # Magnum, Tacx
+     'edge_1040_asia' => 4305,
+     'enduro2' => 4341,
+     'sdm4' => 10007, # SDM4 footpod
      'edge_remote' => 10014,
+     'tacx_training_app_win' => 20533,
+     'tacx_training_app_mac' => 20534,
+     'tacx_training_app_mac_catalyst' => 20565,
      'training_center' => 20119,
+     'tacx_training_app_android' => 30045,
+     'tacx_training_app_ios' => 30046,
+     'tacx_training_app_legacy' => 30047,
      'connectiq_simulator' => 65531,
      'android_antplus_plugin' => 65532,
-     'connect' => 65534,
+     'connect' => 65534, # Garmin Connect website
    },
 
    'device_type' => +{
@@ -2254,10 +2624,12 @@ my %named_type =
      'racquet' => 26,
      'control_hub' => 27,
      'muscle_oxygen' => 31,
+     'shifting' => 34,
      'bike_light_main' => 35,
      'bike_light_shared' => 36,
      'exd' => 38,
      'bike_radar' => 40,
+     'bike_aero' => 46,
      'weight_scale' => 119,
      'heart_rate' => 120,
      'bike_speed_cadence' => 121,
@@ -2483,6 +2855,7 @@ my %named_type =
      'remote_manual_sync' => 0x10000000,
      'live_track_auto_start' => 0x20000000,
      'live_track_messaging' => 0x40000000,
+     'instant_input' => 0x80000000, # Device supports instant input feature
    },
 
    'weather_report' => +{
@@ -2722,6 +3095,10 @@ my %named_type =
      'local' => 5,
    },
 
+   'local_device_type' => +{
+     '_base_type' => FIT_UINT8,
+   },
+
    'display_orientation' => +{
      '_base_type' => FIT_ENUM,
      'auto' => 0,
@@ -2731,11 +3108,21 @@ my %named_type =
      'landscape_flipped' => 4,
    },
 
+   'workout_equipment' => +{
+     '_base_type' => FIT_ENUM,
+     'none' => 0,
+     'swim_fins' => 1,
+     'swim_kickboard' => 2,
+     'swim_paddles' => 3,
+     'swim_pull_buoy' => 4,
+     'swim_snorkel' => 5,
+   },
    'watchface_mode' => +{
      '_base_type' => FIT_ENUM,
      'digital' => 0,
      'analog' => 1,
      'connect_iq' => 2,
+     'disabled' => 3,
    },
 
    'digital_watchface_layout' => +{
@@ -2756,6 +3143,8 @@ my %named_type =
      '_base_type' => FIT_ENUM,
      'seated' => 0,
      'standing' => 1,
+     'transition_to_seated' => 2,
+     'transition_to_standing' => 3,
    },
 
    'power_phase_type' => +{
@@ -2787,7 +3176,8 @@ my %named_type =
      '_base_type' => FIT_ENUM,
      'accelerometer' => 0,
      'gyroscope' => 1,
-     'compass' => 2,
+     'compass' => 2, # Magnetometer
+     'barometer' => 3,
    },
 
    'bike_light_network_config_type' => +{
@@ -2845,6 +3235,7 @@ my %named_type =
      'occasionally' => 1,
      'frequent' => 2,
      'once_a_day' => 3,
+     'remote' => 4,
    },
 
    'exd_layout' => +{
@@ -2857,6 +3248,7 @@ my %named_type =
      'full_quarter_split' => 5,
      'half_vertical_left_split' => 6,
      'half_horizontal_top_split' => 7,
+     'dynamic' => 8, # The EXD may display the configured concepts in any layout it sees fit.
    },
 
    'exd_display_type' => +{
@@ -2918,6 +3310,14 @@ my %named_type =
      'enum_course_point' => 39,
      'bradians' => 40,
      'enum_sport' => 41,
+     'inches_hg' => 42,
+     'mm_hg' => 43,
+     'mbars' => 44,
+     'hecto_pascals' => 45,
+     'feet_per_min' => 46,
+     'meters_per_min' => 47,
+     'meters_per_sec' => 48,
+     'eight_cardinal' => 49,
    },
 
    'exd_qualifiers' => +{
@@ -2956,6 +3356,7 @@ my %named_type =
      'last_sport' => 31,
      'moving' => 32,
      'stopped' => 33,
+     'estimated_total' => 34,
      'zone_9' => 242,
      'zone_8' => 243,
      'zone_7' => 244,
@@ -3065,6 +3466,7 @@ my %named_type =
      'vmg' => 93,
      'ambient_pressure' => 94,
      'pressure' => 95,
+     'vam' => 96,
    },
 
    'auto_activity_detect' => +{
@@ -3162,6 +3564,112 @@ my %named_type =
    'fit_base_unit' => +{
      '_base_type' => FIT_UINT16,
      'other' => 0,
+     'kilogram' => 1,
+     'pound' => 2,
+   },
+
+   'set_type' => +{
+     '_base_type' => FIT_UINT8,
+     'rest' => 0,
+     'active' => 1,
+   },
+
+   'exercise_category' => +{
+     '_base_type' => FIT_UINT16,
+     'bench_press' => 0,
+     'calf_raise' => 1,
+     'cardio' => 2,
+     'carry' => 3,
+     'chop' => 4,
+     'core' => 5,
+     'crunch' => 6,
+     'curl' => 7,
+     'deadlift' => 8,
+     'flye' => 9,
+     'hip_raise' => 10,
+     'hip_stability' => 11,
+     'hip_swing' => 12,
+     'hyperextension' => 13,
+     'lateral_raise' => 14,
+     'leg_curl' => 15,
+     'leg_raise' => 16,
+     'lunge' => 17,
+     'olympic_lift' => 18,
+     'plank' => 19,
+     'plyo' => 20,
+     'pull_up' => 21,
+     'push_up' => 22,
+     'row' => 23,
+     'shoulder_press' => 24,
+     'shoulder_stability' => 25,
+     'shrug' => 26,
+     'sit_up' => 27,
+     'squat' => 28,
+     'total_body' => 29,
+     'triceps_extension' => 30,
+     'warm_up' => 31,
+     'run' => 32,
+     'unknown' => 65534,
+   },
+
+   'water_type' => +{
+     '_base_type' => FIT_ENUM,
+     'fresh' => 0,
+     'salt' => 1,
+     'en13319' => 2,
+     'custom' => 3,
+   },
+
+   'tissue_model_type' => +{
+     '_base_type' => FIT_ENUM,
+     'zhl_16c' => 0, # Buhlmann's decompression algorithm, version C
+   },
+
+   'dive_gas_status' => +{
+     '_base_type' => FIT_ENUM,
+     'disabled' => 0,
+     'enabled' => 1,
+     'backup_only' => 2,
+   },
+
+   'dive_alarm_type' => +{
+     '_base_type' => FIT_ENUM,
+     'depth' => 0,
+     'time' => 1,
+   },
+
+   'dive_backlight_mode' => +{
+     '_base_type' => FIT_ENUM,
+     'at_depth' => 0,
+     'always_on' => 1,
+   },
+
+   'favero_product' => +{
+     '_base_type' => FIT_UINT16,
+     'assioma_uno' => 10,
+     'assioma_duo' => 12,
+   },
+
+   'climb_pro_event' => +{
+     '_base_type' => FIT_ENUM,
+     'approach' => 0,
+     'start' => 1,
+     'complete' => 2,
+   },
+
+   'tap_sensitivity' => +{
+     '_base_type' => FIT_ENUM,
+     'high' => 0,
+     'medium' => 1,
+     'low' => 2,
+   },
+
+   'radar_threat_level_type' => +{
+     '_base_type' => FIT_ENUM,
+     'threat_unknown' => 0,
+     'threat_none' => 1,
+     'threat_approaching' => 2,
+     'threat_approaching_fast' => 3,
    },
 
    );
@@ -3313,6 +3821,8 @@ my %msgtype_by_name =
          'garmin' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream_oem' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
+         'favero_electronics' => +{'name' => 'favero_product', 'type_name' => 'favero_product'},
+         'tacx' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
        },
      },
 
@@ -3361,6 +3871,8 @@ my %msgtype_by_name =
          'garmin' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream_oem' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
+         'favero_electronics' => +{'name' => 'favero_product', 'type_name' => 'favero_product'},
+         'tacx' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
        },
      },
    },
@@ -3408,7 +3920,7 @@ my %msgtype_by_name =
      1 => +{'name' => 'mesg_num', 'type_name' => 'mesg_num'},
      2 => +{'name' => 'field_num'},
      3 => +{'name' => 'count'},
-     4 => +{'name' => 'bits'}, # not present?
+     4 => +{'name' => 'bits'}, # not present? PATJOL: I don't see this one in the profile
    },
 
    # =================== Settings file messages ===================
@@ -3462,6 +3974,8 @@ my %msgtype_by_name =
      97 => +{'name' => 'unknown97'}, # unknown UINT8Z
      98 => +{'name' => 'unknown98'}, # unknown ENUM
      103 => +{'name' => 'unknown103'}, # unknown ENUM
+     134 => +{'name' => 'tap_interface', 'type_name' => 'switch'},
+     174 => +{'name' => 'tap_sensitivity', 'type_name' => 'tap_sensitivity'},
    },
 
    'user_profile' => +{
@@ -3500,6 +4014,8 @@ my %msgtype_by_name =
      38 => +{'name' => 'unknown38'}, # unknown UINT16
      40 => +{'name' => 'unknown40'}, # unknown FLOAT32
      42 => +{'name' => 'unknown42'}, # unknown UINT32
+     47 => +{'name' => 'depth_setting', 'type_name' => 'display_measure'},
+     49 => +{'name' => 'dive_count'},
    },
 
    'hrm_profile' => +{
@@ -3590,6 +4106,7 @@ my %msgtype_by_name =
    },
 
    'ohr_settings' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
      0 => +{'name' => 'enabled', 'type_name' => 'switch'},
    },
 
@@ -3651,6 +4168,55 @@ my %msgtype_by_name =
      1 => +{'name' => 'high_bpm', 'unit' => 'bpm'},
      2 => +{'name' => 'calories', 'scale' => 10, 'unit' => 'kcal/min'},
      3 => +{'name' => 'fat_calories', 'scale' => 10, 'unit' => 'kcal/min'},
+   },
+
+   'dive_settings' => +{
+     254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
+     0 =>  +{'name' => 'name'},
+     1 =>  +{'name' => 'model', 'type_name' => 'tissue_model_type'},
+     2 =>  +{'name' => 'gf_low',  'unit' => '%'},
+     3 =>  +{'name' => 'gf_high', 'unit' => '%'},
+     4 =>  +{'name' => 'water_type', 'type_name' => 'water_type'},
+     5 =>  +{'name' => 'water_density', 'unit' => 'kg/m^3'},
+     6 =>  +{'name' => 'po2_warn',  'scale' => 100, 'unit' => '%'},
+     7 =>  +{'name' => 'po2_critical', 'scale' => 100, 'unit' => '%'},
+     8 =>  +{'name' => 'po2_deco', 'scale' => 100, 'unit' => '%'},
+     9 =>  +{'name' => 'safety_stop_enabled', 'type_name' => 'bool'},
+     10 => +{'name' => 'bottom_depth'},
+     11 => +{'name' => 'bottom_time'},
+     12 => +{'name' => 'apnea_countdown_enabled', 'type_name' => 'bool'},
+     13 => +{'name' => 'apnea_countdown_time'},
+     14 => +{'name' => 'backlight_mode', 'type_name' => 'dive_backlight_mode'},
+     15 => +{'name' => 'backlight_brightness'},
+     16 => +{'name' => 'backlight_timeout', 'type_name' => 'backlight_timeout'},
+     17 => +{'name' => 'repeat_dive_interval', 'unit' => 's'},
+     18 => +{'name' => 'safety_stop_time', 'unit' => 's'},
+     19 => +{'name' => 'heart_rate_source_type', 'type_name' => 'source_type'},
+     20 => +{
+       'name' => 'heart_rate_source',
+       'switch' => +{
+         '_by' => 'heart_rate_source_type',
+         'antplus' => +{'name' => 'heart_rate_antplus_device_type', 'type_name' => 'antplus_device_type'},
+         'local' => +{'name' => 'heart_rate_local_device_type', 'type_name' => 'local_device_type'},
+       },
+     },
+   },
+
+   'dive_alarm' => +{
+     254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
+     0 => +{'name' => 'depth', 'scale' => 1000, 'unit' => 'm'},
+     1 => +{'name' => 'time', 'unit' => 's'},
+     2 => +{'name' => 'enabled', 'type_name' => 'bool'},
+     3 => +{'name' => 'alarm_type', 'type_name' => 'dive_alarm_type'},
+     4 => +{'name' => 'sound', 'type_name' => 'tone'},
+     5 => +{'name' => 'dive_types', 'type_name' => 'sub_sport'},
+   },
+
+   'dive_gas' => +{
+     254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
+     0 => +{'name' => 'helium_content', 'unit' => '%'},
+     1 => +{'name' => 'oxygen_content', 'unit' => '%'},
+     2 => +{'name' => 'status', 'type_name' => 'dive_gas_status'},
    },
 
    # =================== Goals file messages ===================
@@ -3840,6 +4406,17 @@ my %msgtype_by_name =
      133 => +{'name' => 'avg_stance_time_balance', 'scale' => 100, 'unit' => '%'},
      134 => +{'name' => 'avg_step_length', 'scale' => 10, 'unit' => 'mm'},
      137 => +{'name' => 'total_anaerobic_training_effect', 'scale' => 10},
+     139 => +{'name' => 'avg_vam', 'scale' => 1000, 'unit' => 'm/s'},
+     181 => +{'name' => 'total_grit', 'unit' => 'kGrit'},
+     182 => +{'name' => 'total_flow', 'unit' => 'Flow'},
+     183 => +{'name' => 'jump_count'},
+     186 => +{'name' => 'avg_grit', 'unit' => 'kGrit'},
+     187 => +{'name' => 'avg_flow', 'unit' => 'Flow'},
+     199 => +{'name' => 'total_fractional_ascent', 'unit' => 'm'},
+     200 => +{'name' => 'total_fractional_descent', 'unit' => 'm'},
+     208 => +{'name' => 'avg_core_temperature', 'unit' => 'deg.C'},
+     209 => +{'name' => 'min_core_temperature', 'unit' => 'deg.C'},
+     210 => +{'name' => 'max_core_temperature', 'unit' => 'deg.C'},
    },
 
    'lap' => +{
@@ -3988,6 +4565,17 @@ my %msgtype_by_name =
      118 => +{'name' => 'avg_vertical_ratio', 'scale' => 100, 'unit' => '%'},
      119 => +{'name' => 'avg_stance_time_balance', 'scale' => 100, 'unit' => '%'},
      120 => +{'name' => 'avg_step_length', 'scale' => 10, 'unit' => 'mm'},
+     121 => +{'name' => 'avg_vam', 'scale' => 1000, 'unit' => 'm/s'},
+     149 => +{'name' => 'total_grit', 'unit' => 'kGrit'},
+     150 => +{'name' => 'total_flow', 'unit' => 'Flow'},
+     151 => +{'name' => 'jump_count'},
+     153 => +{'name' => 'avg_grit', 'unit' => 'kGrit'},
+     154 => +{'name' => 'avg_flow', 'unit' => 'Flow'},
+     156 => +{'name' => 'total_fractional_ascent', 'unit' => 'm'},
+     157 => +{'name' => 'total_fractional_descent', 'unit' => 'm'},
+     158 => +{'name' => 'avg_core_temperature', 'unit' => 'deg.C'},
+     159 => +{'name' => 'min_core_temperature', 'unit' => 'deg.C'},
+     160 => +{'name' => 'max_core_temperature', 'unit' => 'deg.C'},
    },
 
    'length' => +{
@@ -4073,6 +4661,21 @@ my %msgtype_by_name =
      83 => +{'name' => 'vertical_ratio', 'scale' => 100, 'unit' => '%'},
      84 => +{'name' => 'stance_time_balance', 'scale' => 100, 'unit' => '%'},
      85 => +{'name' => 'step_length', 'scale' => 10, 'unit' => 'mm'},
+     91 => +{'name' => 'absolute_pressure', 'unit' => 'Pa'},
+     92 => +{'name' => 'depth', 'scale' => 1000, 'unit' => 'm'},
+     93 => +{'name' => 'next_stop_depth', 'scale' => 1000, 'unit' => 'm'},
+     94 => +{'name' => 'next_stop_time', 'unit' => 's'},
+     95 => +{'name' => 'time_to_surface', 'unit' => 's'},
+     96 => +{'name' => 'ndl_time', 'unit' => 's'},
+     97 => +{'name' => 'cns_load', 'unit' => '%'},
+     98 => +{'name' => 'n2_load', 'unit' => '%'},
+     114 => +{'name' => 'grit'},
+     115 => +{'name' => 'flow'},
+     117 => +{'name' => 'ebike_travel_range', 'unit' => 'km'},
+     118 => +{'name' => 'ebike_battery_level', 'unit' => '%'},
+     119 => +{'name' => 'ebike_assist_mode'},
+     120 => +{'name' => 'ebike_assist_level_percent', 'unit' => '%'},
+     139 => +{'name' => 'core_temperature',  'scale' => 100, 'unit' => 'deg.C'},
    },
 
    'event' => +{
@@ -4101,12 +4704,14 @@ my %msgtype_by_name =
          'time_duration_alert' => +{'name' => 'time_duration_alert', 'scale' => 1000, 'unit' => 's'},
          'distance_duration_alert' => +{'name' => 'distance_duration_alert', 'scale' => 100, 'unit' => 'm'},
          'calorie_duration_alert' => +{'name' => 'calorie_duration_alert', 'unit' => 'kcal'},
+         # why is this key not the same as the name?
          'fitness_equipment' => +{'name' => 'fitness_equipment_state', 'type_name' => 'fitness_equipment_state'},
          'sport_point' => +{'name' => 'sport_point', 'scale' => 11}, # complex decoding!
          'front_gear_change' => +{'name' => 'gear_change_data', 'scale' => 1111}, # complex decoding!
          'rear_gear_change' => +{'name' => 'gear_change_data', 'scale' => 1111}, # complex decoding!
          'rider_position_change' => +{'name' => 'rider_position', 'type_name' => 'rider_position_type'},
          'comm_timeout' => +{'name' => 'comm_timeout', 'type_name' => 'comm_timeout_type'},
+         'radar_threat_alert' => +{'name' => 'radar_threat_alert'},
        },
      },
 
@@ -4118,6 +4723,10 @@ my %msgtype_by_name =
      11 => +{'name' => 'rear_gear_num'},
      12 => +{'name' => 'rear_gear'},
      13 => +{'name' => 'device_index', 'type_name' => 'device_index'},
+     21 => +{'name' => 'radar_threat_level_max', 'type_name' => 'radar_threat_level_type'},
+     22 => +{'name' => 'radar_threat_count'},
+     23 => +{'name' => 'radar_threat_avg_approach_speed', unit => 'm/s'},
+     24 => +{'name' => 'radar_threat_max_approach_speed', unit => 'm/s'},
    },
 
    'device_info' => +{
@@ -4145,6 +4754,8 @@ my %msgtype_by_name =
          'garmin' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream_oem' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
+         'favero_electronics' => +{'name' => 'favero_product', 'type_name' => 'favero_product'},
+         'tacx' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
        },
      },
 
@@ -4165,6 +4776,14 @@ my %msgtype_by_name =
      24 => +{'name' => 'unknown24'}, # unknown UINT32Z
      25 => +{'name' => 'source_type', 'type_name' => 'source_type'},
      27 => +{'name' => 'product_name'},
+     32 => +{'name' => 'battery_level',  'unit' => '%'},
+   },
+
+   'device_aux_battery_info' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0 => +{'name' => 'device_index', 'type_name' => 'device_index'},
+     1 => +{'name' => 'battery_voltage', 'scale' => 256, 'unit' => 'V'},
+     2 => +{'name' => 'battery_status', 'type_name' => 'battery_status'},
    },
 
    'training_file' => +{
@@ -4180,6 +4799,8 @@ my %msgtype_by_name =
          'garmin' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream_oem' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
+         'favero_electronics' => +{'name' => 'favero_product', 'type_name' => 'favero_product'},
+         'tacx' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
        },
      },
 
@@ -4261,6 +4882,9 @@ my %msgtype_by_name =
      5 => +{'name' => 'calibrated_accel_x', 'unit' => 'g'},
      6 => +{'name' => 'calibrated_accel_y', 'unit' => 'g'},
      7 => +{'name' => 'calibrated_accel_z', 'unit' => 'g'},
+     8 => +{'name' => 'compressed_calibrated_accel_x', 'unit' => 'mG'},
+     9 => +{'name' => 'compressed_calibrated_accel_y', 'unit' => 'mG'},
+     10 => +{'name' => 'compressed_calibrated_accel_z', 'unit' => 'mG'},
    },
 
    'magnetometer_data' => +{
@@ -4273,6 +4897,13 @@ my %msgtype_by_name =
      5 => +{'name' => 'calibrated_mag_x', 'unit' => 'G'},
      6 => +{'name' => 'calibrated_mag_y', 'unit' => 'G'},
      7 => +{'name' => 'calibrated_mag_z', 'unit' => 'G'},
+   },
+
+   'barometer_data' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0 => +{'name' => 'timestamp_ms', 'unit' => 'ms'},
+     1 => +{'name' => 'sample_time_offset', 'unit' => 'ms'},
+     2 => +{'name' => 'baro_pres', 'unit' => 'Pa'},
    },
 
    'three_d_sensor_calibration' => +{
@@ -4293,6 +4924,24 @@ my %msgtype_by_name =
      3 => +{'name' => 'level_shift'},
      4 => +{'name' => 'offset_cal'},
      5 => +{'name' => 'orientation_matrix', 'scale' => 65535},
+   },
+
+   'one_d_sensor_calibration' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0 => +{'name' => 'sensor_type', 'type_name' => 'sensor_type'},
+
+     1 => +{
+       'name' => 'calibration_factor',
+
+       'switch' => +{
+         '_by' => 'sensor_type',
+         'barometer' => +{'name' => 'baro_cal_factor'},
+       },
+     },
+
+     2 => +{'name' => 'calibration_divisor', 'unit' => 'counts'},
+     3 => +{'name' => 'level_shift'},
+     4 => +{'name' => 'offset_cal'},
    },
 
    'video_frame' => +{
@@ -4360,6 +5009,33 @@ my %msgtype_by_name =
      4 => +{'name' => 'end_timestamp_ms', 'unit' => 'ms'},
      6 => +{'name' => 'clip_start', 'unit' => 'ms'},
      7 => +{'name' => 'clip_end', 'unit' => 'ms'},
+   },
+
+   'set' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0 => +{'name' => 'duration', 'scale' => 1000, 'unit' => 's'},
+     3 => +{'name' => 'repetitions'},
+     4 => +{'name' => 'weight', 'scale' => 16, 'unit' => 'kg'},
+     5 => +{'name' => 'set_type', 'type_name' => 'set_type'},
+     6 => +{'name' => 'start_time', 'type_name' => 'date_time'},
+     7 => +{'name' => 'category', 'type_name' => 'exercise_category'},
+     8 => +{'name' => 'category_subtype'},
+     9 => +{'name' => 'weight_display_unit', 'type_name' => 'fit_base_unit'},
+     10 => +{'name' => 'message_index', 'type_name' => 'message_index'},
+     11 => +{'name' => 'wkt_step_index', 'type_name' => 'message_index'},
+   },
+
+   'jump' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0 => +{'name' => 'distance', 'unit' => 'm'},
+     1 => +{'name' => 'height', 'unit' => 'm'},
+     2 => +{'name' => 'rotations'},
+     3 => +{'name' => 'hang_time', 'unit' => 's'},
+     4 => +{'name' => 'score'},
+     5 => +{'name' => 'position_lat', 'unit' => 'semicircles'},
+     6 => +{'name' => 'position_long', 'unit' => 'semicircles'},
+     7 => +{'name' => 'speed', 'scale' => 1000, 'unit' => 'm/s'},
+     8 => +{'name' => 'enhanced_speed', 'scale' => 1000, 'unit' => 'm/s'},
    },
 
    # =================== Course file messages ===================
@@ -4511,6 +5187,12 @@ my %msgtype_by_name =
      81 => +{'name' => 'avg_cadence_position', 'unit' => 'rpm'},
      82 => +{'name' => 'max_cadence_position', 'unit' => 'rpm'},
      83 => +{'name' => 'manufacturer', 'type_name' => 'manufacturer'},
+     84 => +{'name' => 'total_grit', 'unit' => 'kGrit'},
+     85 => +{'name' => 'total_flow', 'unit' => 'Flow'},
+     86 => +{'name' => 'avg_grit', 'unit' => 'kGrit'},
+     87 => +{'name' => 'avg_flow', 'unit' => 'Flow'},
+     89 => +{'name' => 'total_fractional_ascent', 'unit' => 'm'},
+     90 => +{'name' => 'total_fractional_descent', 'unit' => 'm'},
    },
 
    # =================== Segment list file messages ===================
@@ -4533,6 +5215,19 @@ my %msgtype_by_name =
      6 => +{'name' => 'num_valid_steps'},
      7 => +{'name' => 'protection'}, # not present?
      8 => +{'name' => 'wkt_name'},
+     11 => +{'name' => 'sub_sport', 'type_name' => 'sub_sport'},
+     14 => +{'name' => 'pool_length', 'scale' => 100, 'unit' => 'm'},
+     15 => +{'name' => 'pool_length_unit', 'type_name' => 'display_measure'},
+   },
+
+   'workout_session' => +{
+     254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
+     0 => +{'name' => 'sport', 'type_name' => 'sport'},
+     1 => +{'name' => 'sub_sport', 'type_name' => 'sub_sport'},
+     2 => +{'name' => 'num_valid_steps'},
+     3 => +{'name' => 'first_step_index'},
+     4 => +{'name' => 'pool_length', 'scale' => 100, 'unit' => 'm'},
+     5 => +{'name' => 'pool_length_unit', 'type_name' => 'display_measure'},
    },
 
    'workout_step' => +{
@@ -4561,6 +5256,7 @@ my %msgtype_by_name =
          'repeat_until_power_greater_than' => +{'name' => 'duration_step'},
          'power_less_than' => +{'name' => 'duration_power', 'type_name' => 'workout_power', 'unit' => 'watts'},
          'power_greater_than' => +{'name' => 'duration_power', 'type_name' => 'workout_power', 'unit' => 'watts'},
+         'reps' => +{'name' => 'duration_reps'},
        },
      },
 
@@ -4571,9 +5267,9 @@ my %msgtype_by_name =
 
        'switch' => +{
          '_by' => [qw(target_type duration_type)],
-         'speed' => +{'name' => 'target_speed_zone'}, # not present?
+         'speed' => +{'name' => 'target_speed_zone'},
          'heart_rate' => +{'name' => 'target_hr_zone'},
-         'cadence' => +{'name' => 'target_cadence_zone'}, # not present?
+         'cadence' => +{'name' => 'target_cadence_zone'},
          'power' => +{'name' => 'target_power_zone'},
          'repeat_until_steps_cmplt' => +{'name' => 'repeat_steps'},
          'repeat_until_time' => +{'name' => 'repeat_time', 'scale' => 1000, 'unit' => 's'},
@@ -4583,6 +5279,7 @@ my %msgtype_by_name =
          'repeat_until_hr_greater_than' => +{'name' => 'repeat_hr', 'type_name' => 'workout_hr', 'unit' => 'bpm'},
          'repeat_until_power_less_than' => +{'name' => 'repeat_power', 'type_name' => 'workout_power', 'unit' => 'watts'},
          'repeat_until_power_greater_than' => +{'name' => 'repeat_power', 'type_name' => 'workout_power', 'unit' => 'watts'},
+         'swim_stroke' => +{'name' => 'target_stroke_type', 'type_name' => 'swim_stroke'},
        },
      },
 
@@ -4611,6 +5308,31 @@ my %msgtype_by_name =
      },
 
      7 => +{'name' => 'intensity', 'type_name' => 'intensity'},
+     8 => +{'name' => 'notes', 'type_name' => 'string'},
+     9 => +{'name' => 'equipment', 'type_name' => 'workout_equipment'},
+     10 => +{'name' => 'exercise_category', 'type_name' => 'exercise_category'},
+     11 => +{'name' => 'exercise_name'},
+     12 => +{'name' => 'exercise_weight', 'scale' => 100, 'unit' => 'kg'},
+     13 => +{'name' => 'weight_display_unit', 'type_name' => 'fit_base_unit'},
+     19 => +{'name' => 'secondary_target_type', 'type_name' => 'wkt_step_target'},
+     20 => +{
+       'name' => 'secondary_target_value',
+       'switch' => +{
+         '_by' => 'secondary_target_type',
+         'speed' => +{'name' => 'secondary_target_speed_zone'},
+         'heart_rate' => +{'name' => 'secondary_target_hr_zone'},
+         'cadence' => +{'name' => 'secondary_target_cadence_zone'},
+         'power' => +{'name' => 'secondary_target_power_zone'},
+         'swim_stroke' => +{'name' => 'secondary_target_stroke_type', 'type_name' => 'swim_stroke'},
+       },
+     },
+   },
+
+   'exercise_title' => +{
+     254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
+     0 => +{'name' => 'exercise_category', 'type_name' => 'exercise_category'},
+     1 => +{'name' => 'exercise_name'},
+     2 => +{'name' => 'wkt_step_name', 'type_name' => 'string'},
    },
 
    # =================== Schedule file messages ===================
@@ -4625,6 +5347,8 @@ my %msgtype_by_name =
          'garmin' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
          'dynastream_oem' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
+         'favero_electronics' => +{'name' => 'favero_product', 'type_name' => 'favero_product'},
+         'tacx' => +{'name' => 'garmin_product', 'type_name' => 'garmin_product'},
        },
      },
 
@@ -4745,6 +5469,11 @@ my %msgtype_by_name =
      10 => +{'name' => 'event_timestamp_12', 'scale' => 1024, 'unit' => 's'},
    },
 
+   'stress_level' => +{
+     0 => +{'name' => 'stress_level_value'},
+     1 => +{'name' => 'stress_level_time', 'type_name' => 'date_time', 'unit' => 's'},
+   },
+
    # =================== Other messages ===================
    'memo_glob' => +{
      250 => +{'name' => 'part_index'},
@@ -4810,6 +5539,22 @@ my %msgtype_by_name =
      11 => +{'name' => 'is_signed', 'type_name' => 'bool'},
    },
 
+   'dive_summary' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0  => +{'name' => 'reference_mesg', 'type_name' => 'mesg_num'},
+     1  => +{'name' => 'reference_index', 'type_name' => 'message_index'},
+     2  => +{'name' => 'avg_depth', 'scale' => 1000, 'unit' => 'm'},
+     3  => +{'name' => 'max_depth', 'scale' => 1000, 'unit' => 'm'},
+     4  => +{'name' => 'surface_interval', 'unit' => 's'},
+     5  => +{'name' => 'start_cns', 'unit' => '%'},
+     6  => +{'name' => 'end_cns', 'unit' => '%'},
+     7  => +{'name' => 'start_n2', 'unit' => '%'},
+     8  => +{'name' => 'end_n2', 'unit' => '%'},
+     9  => +{'name' => 'o2_toxicity'},
+     10 => +{'name' => 'dive_number'},
+     11 => +{'name' => 'bottom_time', 'scale' => 1000, 'unit' => 's'},
+   },
+
    'field_description' => +{
      0 => +{'name' => 'developer_data_index'},
      1 => +{'name' => 'field_definition_number'},
@@ -4833,6 +5578,16 @@ my %msgtype_by_name =
      2 => +{'name' => 'manufacturer_id', 'type_name' => 'manufacturer'},
      3 => +{'name' => 'developer_data_index'},
      4 => +{'name' => 'application_version'},
+   },
+
+   'climb_pro' => +{
+     253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+     0 => +{'name' => 'position_lat', 'unit' => 'semicircles'},
+     1 => +{'name' => 'position_long', 'unit' => 'semicircles'},
+     2 => +{'name' => 'climb_pro_event', 'type_name' => 'climb_pro_event'},
+     3 => +{'name' => 'climb_number'},
+     4 => +{'name' => 'climb_category'},
+     5 => +{'name' => 'current_dist', 'unit' => 'm'},
    },
 
    # =================== Undocumented messages ===================
