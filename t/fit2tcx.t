@@ -35,10 +35,12 @@ is( $version_num >= $at_least_version, 1,   "    fit2tcx.pl: can we look up the 
 
 my $captured_stat;
 # $captured_stat = run(EXIT_ANY, 'fit2tcx.pl', '--version');
-eval { $captured_stat = run([0], 'fit2tcx.pl', '--version') };
+eval { $captured_stat = run([0], 'fit2tcx.pl', '--version'); };
 
 my $has_a_version_installed;
-if ($@ =~ /failed to start.*No such file or directory/ ) {
+if ($@ =~ /failed to start: "(.*)"/ ) {
+    my $reason    = $!;             # in case we need it
+    my $shell_msg = $1;             # in case we need it
     $has_a_version_installed = 0
 } elsif (defined $captured_stat && $captured_stat == 0) {
     $has_a_version_installed = 1
