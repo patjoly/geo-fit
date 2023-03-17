@@ -5133,8 +5133,7 @@ sub named_type_value {
 }
 
 my %msgtype_by_name = (
-    # =================== Common messages ===================
-    'file_id' => +{
+    'file_id' => +{                     # begins === Common messages === section
         0 => +{'name' => 'type', 'type_name' => 'file'},
         1 => +{'name' => 'manufacturer', 'type_name' => 'manufacturer'},
 
@@ -5173,13 +5172,7 @@ my %msgtype_by_name = (
         5 => +{'name' => 'system_timestamp_ms', 'unit' => 'ms'},
     },
 
-    # =================== ??? ===================
-    'pad' => +{
-        0 => +{'name' => 'pad'},
-    },
-
-    # =================== Device file messages ===================
-    'software' => +{
+    'software' => +{                    # begins === Device file messages === section
         254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
         3 => +{'name' => 'version', 'scale' => 100},
         5 => +{'name' => 'part_number'},
@@ -5248,8 +5241,7 @@ my %msgtype_by_name = (
         4 => +{'name' => 'bits'}, # not present? PATJOL: I don't see this one in the profile
     },
 
-    # =================== Settings file messages ===================
-    'device_settings' => +{
+    'device_settings' => +{             # begins === Settings file messages === section
         0 => +{'name' => 'active_time_zone'},
         1 => +{'name' => 'utc_offset'},
         2 => +{'name' => 'time_offset', 'unit' => 's'},
@@ -5435,8 +5427,7 @@ my %msgtype_by_name = (
         0 => +{'name' => 'enabled', 'type_name' => 'switch'},
     },
 
-    # =================== Sport settings file messages ===================
-    'zones_target' => +{
+    'zones_target' => +{                # begins === Sport settings file messages === section
         1 => +{'name' => 'max_heart_rate', 'unit' => 'bpm'},
         2 => +{'name' => 'threshold_heart_rate', 'unit' => 'bpm'},
         3 => +{'name' => 'functional_threshold_power', 'unit' => 'watts'},
@@ -5544,8 +5535,7 @@ my %msgtype_by_name = (
         2 => +{'name' => 'status', 'type_name' => 'dive_gas_status'},
     },
 
-    # =================== Goals file messages ===================
-    'goal' => +{
+    'goal' => +{                        # begins === Goals file messages === section
         254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
         0 => +{'name' => 'sport', 'type_name' => 'sport'},
         1 => +{'name' => 'sub_sport', 'type_name' => 'sub_sport'},
@@ -5561,8 +5551,7 @@ my %msgtype_by_name = (
         11 => +{'name' => 'source', 'type_name' => 'goal_source'},
     },
 
-    # =================== Activity file messages ===================
-    'activity' => +{
+    'activity' => +{                    # begins === Activity file messages === section
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'total_timer_time', 'scale' => 1000, 'unit' => 's'},
         1 => +{'name' => 'num_sessions'},
@@ -6133,10 +6122,6 @@ my %msgtype_by_name = (
         4 => +{'name' => 'time_created', 'type_name' => 'date_time'},
     },
 
-    'hrv' => +{ # heart rate variability
-        0 => +{'name' => 'time', 'scale' => 1000, 'unit' => 's'},
-    },
-
     'weather_conditions' => +{
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'weather_report', 'type_name' => 'weather_report'},
@@ -6363,8 +6348,42 @@ my %msgtype_by_name = (
         8 => +{'name' => 'enhanced_speed', 'scale' => 1000, 'unit' => 'm/s'},
     },
 
-    # =================== Course file messages ===================
-    'course' => +{
+    'climb_pro' => +{
+        253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+        0 => +{'name' => 'position_lat', 'unit' => 'semicircles'},
+        1 => +{'name' => 'position_long', 'unit' => 'semicircles'},
+        2 => +{'name' => 'climb_pro_event', 'type_name' => 'climb_pro_event'},
+        3 => +{'name' => 'climb_number'},
+        4 => +{'name' => 'climb_category'},
+        5 => +{'name' => 'current_dist', 'unit' => 'm'},
+    },
+
+    'field_description' => +{
+        0 => +{'name' => 'developer_data_index'},
+        1 => +{'name' => 'field_definition_number'},
+        2 => +{'name' => 'fit_base_type_id', 'type_name' => 'fit_base_type'},
+        3 => +{'name' => 'field_name'},
+        4 => +{'name' => 'array'},
+        5 => +{'name' => 'components'},
+        6 => +{'name' => 'scale'},
+        7 => +{'name' => 'offset'},
+        8 => +{'name' => 'units'},
+        9 => +{'name' => 'bits'},
+        10 => +{'name' => 'accumulate'},
+        13 => +{'name' => 'fit_base_unit_id', 'type_name' => 'fit_base_unit'},
+        14 => +{'name' => 'native_mesg_num', 'type_name' => 'mesg_num'},
+        15 => +{'name' => 'native_field_num'},
+    },
+
+    'developer_data_id' => +{
+        0 => +{'name' => 'developer_id'},
+        1 => +{'name' => 'application_id'},
+        2 => +{'name' => 'manufacturer_id', 'type_name' => 'manufacturer'},
+        3 => +{'name' => 'developer_data_index'},
+        4 => +{'name' => 'application_version'},
+    },
+
+    'course' => +{                      # begins === Course file messages === section
         4 => +{'name' => 'sport', 'type_name' => 'sport'},
         5 => +{'name' => 'name'},
         6 => +{'name' => 'capabilities', 'type_name' => 'course_capabilities'},
@@ -6382,8 +6401,7 @@ my %msgtype_by_name = (
         8 => +{'name' => 'favorite', 'type_name' => 'bool'},
     },
 
-    # =================== Segment file messages ===================
-    'segment_id' => +{
+    'segment_id' => +{                  # begins === Segment file messages === section
         0 => +{'name' => 'name'},
         1 => +{'name' => 'uuid'},
         2 => +{'name' => 'sport', 'type_name' => 'sport'},
@@ -6520,8 +6538,7 @@ my %msgtype_by_name = (
         90 => +{'name' => 'total_fractional_descent', 'unit' => 'm'},
     },
 
-    # =================== Segment list file messages ===================
-    'segment_file' => +{
+    'segment_file' => +{                # begins === Segment list file messages === section
         254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
         1 => +{'name' => 'file_uuid'},
         3 => +{'name' => 'enabled', 'type_name' => 'bool'},
@@ -6533,8 +6550,7 @@ my %msgtype_by_name = (
         11 => +{'name' => 'default_race_leader'},
     },
 
-    # =================== Workout file messages ===================
-    'workout' => +{
+    'workout' => +{                     # begins === Workout file messages === section
         4 => +{'name' => 'sport', 'type_name' => 'sport'},
         5 => +{'name' => 'capabilities', 'type_name' => 'workout_capabilities'},
         6 => +{'name' => 'num_valid_steps'},
@@ -6660,8 +6676,7 @@ my %msgtype_by_name = (
         2 => +{'name' => 'wkt_step_name', 'type_name' => 'string'},
     },
 
-    # =================== Schedule file messages ===================
-    'schedule' => +{
+    'schedule' => +{                    # begins === Schedule file messages === section
         0 => +{'name' => 'manufacturer', 'type_name' => 'manufacturer'},
 
         1 => +{
@@ -6684,8 +6699,7 @@ my %msgtype_by_name = (
         6 => +{'name' => 'schedule_time', 'type_name' => 'local_date_time'},
     },
 
-    # =================== Totals file messages ===================
-    'totals' => +{
+    'totals' => +{                      # begins === Totals file messages === section
         254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'timer_time', 'unit' => 's'},
@@ -6699,8 +6713,7 @@ my %msgtype_by_name = (
         10 => +{'name' => 'profile_name'}, # unknown STRING
     },
 
-    # =================== Weight scale file messages ===================
-    'weight_scale' => +{
+    'weight_scale' => +{                # begins === Weight scale file messages === section
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'weight', 'type_name' => 'weight', 'scale' => 100, 'unit' => 'kg'},
         1 => +{'name' => 'percent_fat', 'scale' => 100, 'unit' => '%'},
@@ -6716,8 +6729,7 @@ my %msgtype_by_name = (
         12 => +{'name' => 'user_profile_index', 'type_name' => 'message_index'},
     },
 
-    # =================== Blood pressure file messages ===================
-    'blood_pressure' => +{
+    'blood_pressure' => +{              # begins === Blood pressure file messages === section
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'systolic_pressure', 'unit' => 'mmHg'},
         1 => +{'name' => 'diastolic_pressure', 'unit' => 'mmHg'},
@@ -6731,8 +6743,7 @@ my %msgtype_by_name = (
         9 => +{'name' => 'user_profile_index', 'type_name' => 'message_index'},
     },
 
-    # =================== Monitoring file messages ===================
-    'monitoring_info' => +{
+    'monitoring_info' => +{             # begins === Monitoring file messages === section
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'local_timestamp', 'type_name' => 'local_date_time'},
         1 => +{'name' => 'activity_type', 'type_name' => 'activity_type'},
@@ -6799,8 +6810,7 @@ my %msgtype_by_name = (
         1 => +{'name' => 'stress_level_time', 'type_name' => 'date_time', 'unit' => 's'},
     },
 
-    # =================== Other messages ===================
-    'memo_glob' => +{
+    'memo_glob' => +{                   # begins === Other messages === section
         250 => +{'name' => 'part_index'},
         0 => +{'name' => 'memo'},
         1 => +{'name' => 'message_number'},
@@ -6880,43 +6890,15 @@ my %msgtype_by_name = (
         11 => +{'name' => 'bottom_time', 'scale' => 1000, 'unit' => 's'},
     },
 
-    'field_description' => +{
-        0 => +{'name' => 'developer_data_index'},
-        1 => +{'name' => 'field_definition_number'},
-        2 => +{'name' => 'fit_base_type_id', 'type_name' => 'fit_base_type'},
-        3 => +{'name' => 'field_name'},
-        4 => +{'name' => 'array'},
-        5 => +{'name' => 'components'},
-        6 => +{'name' => 'scale'},
-        7 => +{'name' => 'offset'},
-        8 => +{'name' => 'units'},
-        9 => +{'name' => 'bits'},
-        10 => +{'name' => 'accumulate'},
-        13 => +{'name' => 'fit_base_unit_id', 'type_name' => 'fit_base_unit'},
-        14 => +{'name' => 'native_mesg_num', 'type_name' => 'mesg_num'},
-        15 => +{'name' => 'native_field_num'},
+    'hrv' => +{ # heart rate variability
+        0 => +{'name' => 'time', 'scale' => 1000, 'unit' => 's'},
     },
 
-    'developer_data_id' => +{
-        0 => +{'name' => 'developer_id'},
-        1 => +{'name' => 'application_id'},
-        2 => +{'name' => 'manufacturer_id', 'type_name' => 'manufacturer'},
-        3 => +{'name' => 'developer_data_index'},
-        4 => +{'name' => 'application_version'},
+    'pad' => +{
+        0 => +{'name' => 'pad'},
     },
 
-    'climb_pro' => +{
-        253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
-        0 => +{'name' => 'position_lat', 'unit' => 'semicircles'},
-        1 => +{'name' => 'position_long', 'unit' => 'semicircles'},
-        2 => +{'name' => 'climb_pro_event', 'type_name' => 'climb_pro_event'},
-        3 => +{'name' => 'climb_number'},
-        4 => +{'name' => 'climb_category'},
-        5 => +{'name' => 'current_dist', 'unit' => 'm'},
-    },
-
-    # =================== Undocumented messages ===================
-    'source' => +{
+    'source' => +{                      # begins === Undocumented messages === section
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         # device_index in device_info
         0 => +{'name' => 'unknown0', 'type_name' => 'device_index'}, # unknown UINT8
