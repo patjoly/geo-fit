@@ -387,7 +387,7 @@ sub profile_version_from_string {
     }
 }
 
-my $profile_version = &profile_version_from_string(undef, "21.94");
+my $profile_version = &profile_version_from_string(undef, "21.107");
 my @profile_version = &profile_version_major(undef, $profile_version);
 
 sub profile_version_string {
@@ -415,13 +415,11 @@ for ($crc_poly_deg = 0, $x = $crc_poly ; $x >>= 1 ;) {
     ++$crc_poly_deg;
 }
 my $crc_octets = int($crc_poly_deg / 8 + 0.5);
-
 for ($crc_poly_rev = 0, $y = 1, $x = 2 ** ($crc_poly_deg - 1) ; $x ;) {
     $crc_poly_rev |= $y if $x & $crc_poly;
     $y <<= 1;
     $x >>= 1;
 }
-
 my @crc_table = ();
 for ($i = 0 ; $i < 2 ** 8 ; ++$i) {
     my $r = $i;
@@ -1031,7 +1029,6 @@ my %named_type = (
         'power_zone' => 9,
         'met_zone' => 10,
         'sport' => 12,
-#    'unknown13' => 13, # unknown
         'goal' => 15,
         'session' => 18,
         'lap' => 19,
@@ -1058,7 +1055,6 @@ my %named_type = (
         'monitoring' => 55,
         'training_file' => 72,
         'hrv' => 78,
-#    'unknown79' => 79, # unknown
         'ant_rx' => 80,
         'ant_tx' => 81,
         'ant_channel_id' => 82,
@@ -1067,13 +1063,11 @@ my %named_type = (
         'battery' => 104, # undocumented
         'pad' => 105,
         'slave_device' => 106,
-#    'unknown113' => 113, # unknown
         'connectivity' => 127,
         'weather_conditions' => 128,
         'weather_alert' => 129,
         'cadence_zone' => 131,
         'hr' => 132,
-#    'unknown140' => 140, # unknown
         'segment_lap' => 142,
         'memo_glob' => 145,
         'sensor' => 147, # undocumented
@@ -1106,6 +1100,7 @@ my %named_type = (
         'magnetometer_data' => 208,
         'barometer_data' => 209,
         'one_d_sensor_calibration' => 210,
+        'time_in_zone' => 216,
         'set' => 225,
         'stress_level' => 227,
         'dive_settings' => 258,
@@ -1114,8 +1109,12 @@ my %named_type = (
         'exercise_title' => 264,
         'dive_summary' => 268,
         'jump' => 285,
+        'split' => 312,
         'climb_pro' => 317,
+        'tank_update' => 319,
+        'tank_summary' => 323,
         'device_aux_battery_info' => 375,
+        'dive_apnea_alarm' => 393,
         'mfg_range_min' => 0xFF00,
         'mfg_range_max' => 0xFFFE,
     },
@@ -1514,6 +1513,11 @@ my %named_type = (
         'jumpmaster' => 46,
         'boxing' => 47,
         'floor_climbing' => 48,
+        'diving' => 53,
+        'hiit' => 62,
+        'racket' => 64,
+        'water_tubing' => 76,
+        'wakesurfing' => 77,
         'all' => 254,
     },
 
@@ -1661,6 +1665,12 @@ my %named_type = (
         'ultra' => 67, # Ultramarathon
         'indoor_climbing' => 68, # Climbing
         'bouldering' => 69, # Climbing
+        'hiit' => 70, # High Intensity Interval Training
+        'amrap' => 73, # HIIT
+        'emom' => 74, # HIIT
+        'tabata' => 75, # HIIT
+        'pickleball' => 84, # Racket
+        'padel' => 85, # Racket
         'all' => 254,
     },
 
@@ -1793,7 +1803,15 @@ my %named_type = (
         'elev_high_alert' => 45,
         'elev_low_alert' => 46,
         'comm_timeout' => 47,
+        'dive_alert' => 56, # marker
+        'dive_gas_switched' => 57, # marker
+        'tank_pressure_reserve' => 71, # marker
+        'tank_pressure_critical' => 72, # marker
+        'tank_lost' => 73, # marker
         'radar_threat_alert' => 75, # start/stop/marker
+        'tank_battery_low' => 76, # marker
+        'tank_pod_connected' => 81, # marker - tank pod has connected
+        'tank_pod_disconnected' => 82, # marker - tank pod has lost connection
     },
 
     'event_type' => +{
@@ -1853,6 +1871,7 @@ my %named_type = (
         'custom' => 0,
         'percent_max_hr' => 1,
         'percent_hrr' => 2,
+        'percent_lthr' => 3,
     },
 
     'pwr_zone_calc' => +{
@@ -2109,6 +2128,19 @@ my %named_type = (
         'versa_design' => 130,
         'chileaf' => 131,
         'cycplus' => 132,
+        'gravaa_byte' => 133,
+        'sigeyi' => 134,
+        'coospo' => 135,
+        'geoid' => 136,
+        'bosch' => 137,
+        'kyto' => 138,
+        'kinetic_sports' => 139,
+        'decathlon_byte' => 140,
+        'tq_systems' => 141,
+        'tag_heuer' => 142,
+        'keiser_fitness' => 143,
+        'zwift_byte' => 144,
+        'porsche_ep' => 145,
         'development' => 255,
         'healthandlife' => 257,
         'lezyne' => 258,
@@ -2158,6 +2190,24 @@ my %named_type = (
         'zone5cloud' => 302,
         'greenteg' => 303,
         'yamaha_motors' => 304,
+        'whoop' => 305,
+        'gravaa' => 306,
+        'onelap' => 307,
+        'monark_exercise' => 308,
+        'form' => 309,
+        'decathlon' => 310,
+        'syncros' => 311,
+        'heatup' => 312,
+        'cannondale' => 313,
+        'true_fitness' => 314,
+        'RGT_cycling' => 315,
+        'vasa' => 316,
+        'race_republic' => 317,
+        'fazua' => 318,
+        'oreka_training' => 319,
+        'lsec' => 320, # Lishun Electric & Communication
+        'lululemon_studio' => 321,
+        'shanyue' => 322,
         'actigraphcorp' => 5759,
     },
 
@@ -2339,6 +2389,7 @@ my %named_type = (
         'fenix3_hr_kor' => 2477,
         'nautix' => 2496,
         'vivo_active_hr_apac' => 2497,
+        'fr35' => 2503,
         'oregon7xx_ww' => 2512,
         'edge_820' => 2530,
         'edge_explore_820' => 2531,
@@ -2517,6 +2568,7 @@ my %named_type = (
         'venu2_asia' => 3950,
         'fr945_lte_asia' => 3978,
         'vivo_move_sport' => 3982,
+        'vivomove_trend' => 3983,
         'approach_S12_asia' => 3986,
         'fr255_music' => 3990,
         'fr255_small_music' => 3991,
@@ -2530,12 +2582,15 @@ my %named_type = (
         'fr55_asia' => 4033,
         'vivosmart_5' => 4063,
         'instinct_2_asia' => 4071,
+        'marq_gen2' => 4105, # Adventurer, Athlete, Captain, Golfer
         'venusq2' => 4115,
         'venusq2music' => 4116,
+        'marq_gen2_aviator' => 4124,
         'd2_air_x10' => 4125,
         'hrm_pro_plus' => 4130,
         'descent_g1_asia' => 4132,
         'tactix7' => 4135,
+        'instinct_crossover' => 4155,
         'edge_explore2' => 4169,
         'tacx_neo_smart' => 4265, # Neo Smart, Tacx
         'tacx_neo2_smart' => 4266, # Neo 2 Smart, Tacx
@@ -2656,6 +2711,7 @@ my %named_type = (
         'training' => 0x00000100,
         'navigation' => 0x00000200,
         'bikeway' => 0x00000400,
+        'aviation'=> 0x00001000,    # Denote course files to be used as flight plans
     },
 
     'weight' => +{
@@ -3057,6 +3113,34 @@ my %named_type = (
 
     'local_device_type' => +{
         '_base_type' => FIT_UINT8,
+        'gps' => 0,             # Onboard gps receiver
+        'glonass' => 1,         # Onboard glonass receiver
+        'gps_glonass' => 2,     # Onboard gps glonass receiver
+        'accelerometer' => 3,   # Onboard sensor
+        'barometer' => 4,       # Onboard sensor
+        'temperature' => 5,     # Onboard sensor
+        'whr' => 10,            # Onboard wrist HR sensor
+        'sensor_hub' => 12,     # Onboard software package
+    },
+
+    'ble_device_type' => +{
+        '_base_type' => FIT_ENUM,
+        'connected_gps' => 0,   # GPS that is provided over a proprietary bluetooth service
+        'heart_rate' => 1,
+        'bike_power' => 2,
+        'bike_speed_cadence' => 3,
+        'bike_speed' => 4,
+        'bike_cadence' => 5,
+        'footpod' => 6,
+        'bike_trainer' => 7,    # Indoor-Bike FTMS protocol
+    },
+
+    'ant_channel_id' => +{
+        '_base_type' => FIT_UINT32Z,
+        'ant_extended_device_number_upper_nibble' => 0xF0000000,
+        'ant_transmission_type_lower_nibble' => 0x0F000000,
+        'ant_device_type' => 0x00FF0000,
+        'ant_device_number' => 0x0000FFFF,
     },
 
     'display_orientation' => +{
@@ -4963,10 +5047,54 @@ my %named_type = (
         'backup_only' => 2,
     },
 
+    'dive_alert' => +{
+        '_base_type' => FIT_ENUM,
+        'ndl_reached' => 0,
+        'gas_switch_prompted' => 1,
+        'near_surface' => 2,
+        'approaching_ndl' => 3,
+        'po2_warn' => 4,
+        'po2_crit_high' => 5,
+        'po2_crit_low' => 6,
+        'time_alert' => 7,
+        'depth_alert' => 8,
+        'deco_ceiling_broken' => 9,
+        'deco_complete' => 10,
+        'safety_stop_broken' => 11,
+        'safety_stop_complete' => 12,
+        'cns_warning' => 13,
+        'cns_critical' => 14,
+        'otu_warning' => 15,
+        'otu_critical' => 16,
+        'ascent_critical' => 17,
+        'alert_dismissed_by_key' => 18,
+        'alert_dismissed_by_timeout' => 19,
+        'battery_low' => 20,
+        'battery_critical' => 21,
+        'safety_stop_started' => 22,
+        'approaching_first_deco_stop' => 23,
+        'setpoint_switch_auto_low' => 24,
+        'setpoint_switch_auto_high' => 25,
+        'setpoint_switch_manual_low' => 26,
+        'setpoint_switch_manual_high' => 27,
+        'auto_setpoint_switch_ignored' => 28,
+        'switched_to_open_circuit' => 29,
+        'switched_to_closed_circuit' => 30,
+        'tank_battery_low' => 32,
+        'po2_ccr_dil_low' => 33,            # ccr diluent has low po2
+        'deco_stop_cleared' => 34,          # a deco stop has been cleared
+        'apnea_neutral_buoyancy' => 35,     # Target Depth Apnea Alarm triggered
+        'apnea_target_depth' => 36,         # Neutral Buoyance Apnea Alarm triggered
+        'apnea_surface' => 37,              # Surface Apnea Alarm triggered
+        'apnea_high_speed' => 38,           # High Speed Apnea Alarm triggered
+        'apnea_low_speed' => 39,            # Low Speed Apnea Alarm triggered
+    },
+
     'dive_alarm_type' => +{
         '_base_type' => FIT_ENUM,
         'depth' => 0,
         'time' => 1,
+        'speed' => 2,       # Alarm when a certain ascent or descent rate is exceeded
     },
 
     'dive_backlight_mode' => +{
@@ -4975,10 +5103,47 @@ my %named_type = (
         'always_on' => 1,
     },
 
+    'ccr_setpoint_switch_mode' => +{
+        '_base_type' => FIT_ENUM,
+        'manual' => 0, # User switches setpoints manually
+        'automatic' => 1, # Switch automatically based on depth
+    },
+
+    'dive_gas_mode' => +{
+        '_base_type' => FIT_ENUM,
+        'open_circuit' => 0,
+        'closed_circuit_diluent' => 1,
+    },
+
     'favero_product' => +{
         '_base_type' => FIT_UINT16,
         'assioma_uno' => 10,
         'assioma_duo' => 12,
+    },
+
+    'split_type' => +{
+        '_base_type' => FIT_ENUM,
+        'ascent_split' => 1,
+        'descent_split' => 2,
+        'interval_active' => 3,
+        'interval_rest' => 4,
+        'interval_warmup' => 5,
+        'interval_cooldown' => 6,
+        'interval_recovery' => 7,
+        'interval_other' => 8,
+        'climb_active' => 9,
+        'climb_rest' => 10,
+        'surf_active' => 11,
+        'run_active' => 12,
+        'run_rest' => 13,
+        'workout_round' => 14,
+        'rwd_run' => 17,            # run/walk detection running
+        'rwd_walk' => 18,           # run/walk detection walking
+        'windsurf_active' => 21,
+        'rwd_stand' => 22,          # run/walk detection standing
+        'transition' => 23,         # Marks the time going from ascent_split to descent_split/used in backcountry ski
+        'ski_lift_split' => 28,
+        'ski_run_split' => 29,
     },
 
     'climb_pro_event' => +{
@@ -4986,6 +5151,13 @@ my %named_type = (
         'approach' => 0,
         'start' => 1,
         'complete' => 2,
+    },
+
+    'gas_consumption_rate_type' => +{
+        '_base_type' => FIT_ENUM,
+        'pressure_sac' => 0,    # Pressure-based Surface Air Consumption
+        'volume_sac' => 1,      # Volumetric Surface Air Consumption
+        'rmv' => 2,             # Respiratory Minute Volume
     },
 
     'tap_sensitivity' => +{
@@ -5001,6 +5173,12 @@ my %named_type = (
         'threat_none' => 1,
         'threat_approaching' => 2,
         'threat_approaching_fast' => 3,
+    },
+
+    'no_fly_time_mode' => +{
+        '_base_type' => FIT_ENUM,
+        'standard' => 0,        # Standard Diver Alert Network no-fly guidance
+        'flat_24_hours' => 1,   # Flat 24 hour no-fly guidance
     },
 
     );
@@ -5427,6 +5605,26 @@ my %msgtype_by_name = (
         0 => +{'name' => 'enabled', 'type_name' => 'switch'},
     },
 
+    'time_in_zone' => +{
+        253 => +{ 'name' => 'timestamp', 'type_name' => 'date_time' },
+        0  => +{ 'name' => 'reference_mesg',             'type_name' => 'mesg_num' },
+        1  => +{ 'name' => 'reference_index',            'type_name' => 'message_index' },
+        2  => +{ 'name' => 'time_in_hr_zone',            'scale' => 1000 },
+        3  => +{ 'name' => 'time_in_speed_zone',         'scale' => 1000 },
+        4  => +{ 'name' => 'time_in_cadence_zone',       'scale' => 1000 },
+        5  => +{ 'name' => 'time_in_power_zone',         'scale' => 1000 },
+        6  => +{ 'name' => 'hr_zone_high_boundary',      'unit'  => 'bpm' },
+        7  => +{ 'name' => 'speed_zone_high_boundary',   'unit'  => 'm/s', 'scale' => 1000 },
+        8  => +{ 'name' => 'cadence_zone_high_boundary', 'unit'  => 'rpm' },
+        9  => +{ 'name' => 'power_zone_high_boundary',   'unit'  => 'watts' },
+        10 => +{ 'name' => 'hr_calc_type',               'type_name' => 'hr_zone_calc' },
+        11 => +{ 'name' => 'max_heart_rate' },
+        12 => +{ 'name' => 'resting_heart_rate' },
+        13 => +{ 'name' => 'threshold_heart_rate' },
+        14 => +{ 'name' => 'pwr_calc_type',              'type_name' => 'pwr_zone_calc' },
+        15 => +{ 'name' => 'functional_threshold_power' },
+    },
+
     'zones_target' => +{                # begins === Sport settings file messages === section
         1 => +{'name' => 'max_heart_rate', 'unit' => 'bpm'},
         2 => +{'name' => 'threshold_heart_rate', 'unit' => 'bpm'},
@@ -5487,6 +5685,7 @@ my %msgtype_by_name = (
     },
 
     'dive_settings' => +{
+        253 => +{'name' => 'timestamp',     'type_name' => 'date_time'},
         254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
         0 =>  +{'name' => 'name'},
         1 =>  +{'name' => 'model', 'type_name' => 'tissue_model_type'},
@@ -5516,6 +5715,18 @@ my %msgtype_by_name = (
                 'local' => +{'name' => 'heart_rate_local_device_type', 'type_name' => 'local_device_type'},
             },
         },
+        21 => +{ 'name' => 'travel_gas', 'type_name' => 'message_index' },                          # Index of travel dive_gas message
+        22 => +{ 'name' => 'ccr_low_setpoint_switch_mode', 'type_name' => 'ccr_setpoint_switch_mode' }, # If low PO2 should be switched to automatically
+        23 => +{ 'name' => 'ccr_low_setpoint', 'scale' => 100 },                                    # Target PO2 when using low setpoint
+        24 => +{ 'name' => 'ccr_low_setpoint_depth', 'unit' => 'm', 'scale' => 1000 },              # Depth to switch to low setpoint in automatic mode
+        25 => +{ 'name' => 'ccr_high_setpoint_switch_mode', 'type' => 'ccr_setpoint_switch_mode' }, # If high PO2 should be switched to automatically
+        26 => +{ 'name' => 'ccr_high_setpoint', 'unit' => '%', 'scale' => 100 },                    # Target PO2 when using high setpoint
+        27 => +{ 'name' => 'ccr_high_setpoint_depth', 'unit' => 'm', 'scale' => 1000 },             # Depth to switch to high setpoint in automatic mode
+        29 => +{ 'name' => 'gas_consumption_display', 'type_name' => 'gas_consumption_rate_type' }, # Type of gas consumption rate to display. Some values are only valid if tank volume is known.
+        30 => +{ 'name' => 'up_key_enabled', 'type_name' => 'bool' },                               # Indicates whether the up key is enabled during dives
+        35 => +{ 'name' => 'dive_sounds', 'type_name' => 'tone' },                                  # Sounds and vibration enabled or disabled in-dive
+        36 => +{ 'name' => 'last_stop_multiple', 'scale' => 10 },                                   # Usually 1.0/1.5/2.0 representing 3/4.5/6m or 10/15/20ft
+        37 => +{ 'name' => 'no_fly_time_mode', 'type_name' => 'no_fly_time_mode' },                 # Indicates which guidelines to use for no-fly surface interval.
     },
 
     'dive_alarm' => +{
@@ -5526,6 +5737,28 @@ my %msgtype_by_name = (
         3 => +{'name' => 'alarm_type', 'type_name' => 'dive_alarm_type'},
         4 => +{'name' => 'sound', 'type_name' => 'tone'},
         5 => +{'name' => 'dive_types', 'type_name' => 'sub_sport'},
+        6  => +{ 'name' => 'id' },                                          # Alarm ID
+        7  => +{ 'name' => 'popup_enabled',      'type_name' => 'bool' },   # Show a visible pop-up for this alarm
+        8  => +{ 'name' => 'trigger_on_descent', 'type_name' => 'bool' },   # Trigger the alarm on descent
+        9  => +{ 'name' => 'trigger_on_ascent',  'type_name' => 'bool' },   # Trigger the alarm on ascent
+        10 => +{ 'name' => 'repeating',          'type_name' => 'bool' },   # Repeat alarm each time threshold is crossed?
+        11 => +{ 'name' => 'speed',              'scale' => 1000 },         # Ascent/descent rate (mps) setting for speed type alarms
+    },
+
+    'dive_apnea_alarm' => +{
+        254 => +{'name' => 'message_index',      'type_name' => 'message_index'},
+        0  => +{ 'name' => 'depth',              'unit' => 'm', 'scale' => 1000 },   # Depth setting (m) for depth type alarms
+        1  => +{ 'name' => 'time',               'unit' => 's' },                    # Time setting (s) for time type alarms
+        2  => +{ 'name' => 'enabled',            'type_name' => 'bool' },            # Enablement flag
+        3  => +{ 'name' => 'alarm_type',         'type_name' => 'dive_alarm_type' }, # Alarm type setting
+        4  => +{ 'name' => 'sound',              'type_name' => 'tone' },            # Tone and Vibe setting for the alarm.
+        5  => +{ 'name' => 'dive_types',         'type_name' => 'sub_sport' },       # Dive types the alarm will trigger on
+        6  => +{ 'name' => 'id' },                                                   # Alarm ID
+        7  => +{ 'name' => 'popup_enabled',      'type_name' => 'bool' },            # Show a visible pop-up for this alarm
+        8  => +{ 'name' => 'trigger_on_descent', 'type_name' => 'bool' },            # Trigger the alarm on descent
+        9  => +{ 'name' => 'trigger_on_ascent',  'type_name' => 'bool' },            # Trigger the alarm on ascent
+        10 => +{ 'name' => 'repeating',          'type_name' => 'bool' },            # Repeat alarm each time threshold is crossed?
+        11 => +{ 'name' => 'speed',              'unit' => 'mps', 'scale' => 1000 }, # Ascent/descent rate (mps) setting for speed type alarms
     },
 
     'dive_gas' => +{
@@ -5533,6 +5766,7 @@ my %msgtype_by_name = (
         0 => +{'name' => 'helium_content', 'unit' => '%'},
         1 => +{'name' => 'oxygen_content', 'unit' => '%'},
         2 => +{'name' => 'status', 'type_name' => 'dive_gas_status'},
+        3 => +{'name' => 'mode',   'type_name' => 'dive_gas_mode'},
     },
 
     'goal' => +{                        # begins === Goals file messages === section
@@ -5721,6 +5955,23 @@ my %msgtype_by_name = (
         134 => +{'name' => 'avg_step_length', 'scale' => 10, 'unit' => 'mm'},
         137 => +{'name' => 'total_anaerobic_training_effect', 'scale' => 10},
         139 => +{'name' => 'avg_vam', 'scale' => 1000, 'unit' => 'm/s'},
+        140 => +{ 'name' => 'avg_depth',                     'unit' => 'm', 'scale' => 1000 },   # 0 if above water
+        141 => +{ 'name' => 'max_depth',                     'unit' => 'm', 'scale' => 1000 },   # 0 if above water
+        142 => +{ 'name' => 'surface_interval',              'unit' => 's' },                    # Time since end of last dive
+        143 => +{ 'name' => 'start_cns',                     'unit' => '%' },
+        144 => +{ 'name' => 'end_cns',                       'unit' => '%' },
+        145 => +{ 'name' => 'start_n2',                      'unit' => '%' },
+        146 => +{ 'name' => 'end_n2',                        'unit' => '%' },
+        147 => +{ 'name' => 'avg_respiration_rate' },
+        148 => +{ 'name' => 'max_respiration_rate' },
+        149 => +{ 'name' => 'min_respiration_rate' },
+        150 => +{ 'name' => 'min_temperature',               'unit' => 'deg.C' },
+        155 => +{ 'name' => 'o2_toxicity',                   'unit' => 'OTUs' },
+        156 => +{ 'name' => 'dive_number' },
+        168 => +{ 'name' => 'training_load_peak',            'scale' => 65536 },
+        169 => +{ 'name' => 'enhanced_avg_respiration_rate', 'unit' => 'breaths/min', 'scale' => 100 },
+        170 => +{ 'name' => 'enhanced_max_respiration_rate', 'unit' => 'breaths/min' },
+        180 => +{ 'name' => 'enhanced_min_respiration_rate', 'scale' => 100 },
         181 => +{'name' => 'total_grit', 'unit' => 'kGrit'},
         182 => +{'name' => 'total_flow', 'unit' => 'Flow'},
         183 => +{'name' => 'jump_count'},
@@ -5880,6 +6131,13 @@ my %msgtype_by_name = (
         119 => +{'name' => 'avg_stance_time_balance', 'scale' => 100, 'unit' => '%'},
         120 => +{'name' => 'avg_step_length', 'scale' => 10, 'unit' => 'mm'},
         121 => +{'name' => 'avg_vam', 'scale' => 1000, 'unit' => 'm/s'},
+        122 => +{ 'name' => 'avg_depth',                     'unit' => 'm', 'scale' => 1000 }, # 0 if above water
+        123 => +{ 'name' => 'max_depth',                     'unit' => 'm', 'scale' => 1000 }, # 0 if above water
+        124 => +{ 'name' => 'min_temperature',               'unit' => 'deg.C' },
+        136 => +{ 'name' => 'enhanced_avg_respiration_rate', 'unit' => 'breaths/min', 'scale' => 100 },
+        137 => +{ 'name' => 'enhanced_max_respiration_rate', 'unit' => 'breaths/min', 'scale' => 100 },
+        147 => +{ 'name' => 'avg_respiration_rate' },
+        148 => +{ 'name' => 'max_respiration_rate' },
         149 => +{'name' => 'total_grit', 'unit' => 'kGrit'},
         150 => +{'name' => 'total_flow', 'unit' => 'Flow'},
         151 => +{'name' => 'jump_count'},
@@ -5911,6 +6169,10 @@ my %msgtype_by_name = (
         19 => +{'name' => 'opponent_score'},
         20 => +{'name' => 'stroke_count', 'unit' => 'counts'},
         21 => +{'name' => 'zone_count', 'unit' => 'counts'},
+        22 => +{ 'name' => 'enhanced_avg_respiration_rate', 'unit' => 'breaths/min', 'scale' => 100 },
+        23 => +{ 'name' => 'enhanced_max_respiration_rate', 'unit' => 'breaths/min', 'scale' => 100 },
+        24 => +{ 'name' => 'avg_respiration_rate' },
+        25 => +{ 'name' => 'max_respiration_rate' },
     },
 
     'record' => +{
@@ -5983,12 +6245,20 @@ my %msgtype_by_name = (
         96 => +{'name' => 'ndl_time', 'unit' => 's'},
         97 => +{'name' => 'cns_load', 'unit' => '%'},
         98 => +{'name' => 'n2_load', 'unit' => '%'},
+        99  => +{ 'name' => 'respiration_rate' },
+        108 => +{ 'name' => 'enhanced_respiration_rate', 'unit' => 'breaths/min', 'scale' => 100 },
         114 => +{'name' => 'grit'},
         115 => +{'name' => 'flow'},
         117 => +{'name' => 'ebike_travel_range', 'unit' => 'km'},
         118 => +{'name' => 'ebike_battery_level', 'unit' => '%'},
         119 => +{'name' => 'ebike_assist_mode'},
         120 => +{'name' => 'ebike_assist_level_percent', 'unit' => '%'},
+        123 => +{ 'name' => 'air_time_remaining' },
+        124 => +{ 'name' => 'pressure_sac',     'unit' => 'bar/min', 'scale' => 100 },  # Pressure-based surface air consumption
+        125 => +{ 'name' => 'volume_sac',       'unit' => 'l/min', 'scale' => 100 },    # Volumetric surface air consumption
+        126 => +{ 'name' => 'rmv',              'unit' => 'l/min', 'scale' => 100 },    # Respiratory minute volume
+        127 => +{ 'name' => 'ascent_rate',      'unit' => 'm/s', 'scale' => 1000 },
+        129 => +{ 'name' => 'po2',              'unit' => 'percent', 'scale' => 100 },  # Current partial pressure of oxygen
         139 => +{'name' => 'core_temperature',  'scale' => 100, 'unit' => 'deg.C'},
     },
 
@@ -6025,6 +6295,7 @@ my %msgtype_by_name = (
                 'rear_gear_change' => +{'name' => 'gear_change_data', 'scale' => 1111}, # complex decoding!
                 'rider_position_change' => +{'name' => 'rider_position', 'type_name' => 'rider_position_type'},
                 'comm_timeout' => +{'name' => 'comm_timeout', 'type_name' => 'comm_timeout_type'},
+                'dive_alert' => +{ 'name' => 'dive_alert', 'type_name' => 'dive_alert' },
                 'radar_threat_alert' => +{'name' => 'radar_threat_alert'},
             },
         },
@@ -6052,8 +6323,10 @@ my %msgtype_by_name = (
 
             'switch' => +{
                 '_by' => 'source_type',
+                'bluetooth_low_energy' => +{ 'name' => 'ble_device_type', 'type_name' => 'ble_device_type' },
                 'antplus' => +{'name' => 'antplus_device_type', 'type_name' => 'antplus_device_type'},
                 'ant' => +{'name' => 'ant_device_type'},
+                'local' => +{'name' => 'local_device_type', 'type_name' => 'local_device_type'},
             },
         },
 
@@ -6348,6 +6621,14 @@ my %msgtype_by_name = (
         8 => +{'name' => 'enhanced_speed', 'scale' => 1000, 'unit' => 'm/s'},
     },
 
+    'split' => +{
+        0 => +{ 'name' => 'split_type',         'type_name' => 'split_type'    },
+        1 => +{ 'name' => 'total_elapsed_time', 'unit' => 's', 'scale' => 1000 },
+        2 => +{ 'name' => 'total_timer_time',   'unit' => 's', 'scale' => 1000 },
+        3 => +{ 'name' => 'total_distance',     'unit' => 'm', 'scale' => 100  },
+        9 => +{ 'name' => 'start_time',         'type_name' => 'date_time'     },
+    },
+
     'climb_pro' => +{
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'position_lat', 'unit' => 'semicircles'},
@@ -6430,6 +6711,7 @@ my %msgtype_by_name = (
         3 => +{'name' => 'distance', 'scale' => 100, 'unit' => 'm'},
         4 => +{'name' => 'altitude', 'scale' => 5, 'offset' => 500, 'unit' => 'm'},
         5 => +{'name' => 'leader_time', 'scale' => 1000, 'unit' => 's'},
+        6 => +{ 'name' => 'enhanced_altitude', 'unit' => 'm', 'scale' => 5 }, # Accumulated altitude along the segment at the described point
     },
 
     'segment_lap' => +{
@@ -6536,6 +6818,9 @@ my %msgtype_by_name = (
         87 => +{'name' => 'avg_flow', 'unit' => 'Flow'},
         89 => +{'name' => 'total_fractional_ascent', 'unit' => 'm'},
         90 => +{'name' => 'total_fractional_descent', 'unit' => 'm'},
+        91 => +{ 'name' => 'enhanced_avg_altitude', 'unit' => 'm', 'scale' => 5 },
+        92 => +{ 'name' => 'enhanced_max_altitude', 'unit' => 'm', 'scale' => 5 },
+        93 => +{ 'name' => 'enhanced_min_altitude', 'unit' => 'm', 'scale' => 5 },
     },
 
     'segment_file' => +{                # begins === Segment list file messages === section
@@ -6888,10 +7173,34 @@ my %msgtype_by_name = (
         9  => +{'name' => 'o2_toxicity'},
         10 => +{'name' => 'dive_number'},
         11 => +{'name' => 'bottom_time', 'scale' => 1000, 'unit' => 's'},
+        12 => +{ 'name' => 'avg_pressure_sac', 'unit' => 'bar/min', 'scale' => 100 },# Average pressure-based surface air consumption
+        13 => +{ 'name' => 'avg_volume_sac',   'unit' => 'l/min', 'scale' => 100 },  # Average volumetric surface air consumption
+        14 => +{ 'name' => 'avg_rmv',          'unit' => 'l/min', 'scale' => 100 },  # Average respiratory minute volume
+        15 => +{ 'name' => 'descent_time',     'unit' => 's', 'scale' => 1000 },     # Time to reach deepest level stop
+        16 => +{ 'name' => 'ascent_time',      'unit' => 's', 'scale' => 1000 },     # Time after leaving bottom until reaching surface
+        17 => +{ 'name' => 'avg_ascent_rate',  'unit' => 'm/s', 'scale' => 1000 },   # Average ascent rate, not including descents or stops
+        22 => +{ 'name' => 'avg_descent_rate', 'unit' => 'm/s', 'scale' => 1000 },   # Average descent rate, not including ascents or stops
+        23 => +{ 'name' => 'max_ascent_rate',  'unit' => 'm/s', 'scale' => 1000 },   # Maximum ascent rate
+        24 => +{ 'name' => 'max_descent_rate', 'unit' => 'm/s', 'scale' => 1000 },   # Maximum descent rate
+        25 => +{ 'name' => 'hang_time',        'unit' => 's', 'scale' => 1000 },     # Time spent neither ascending nor descending
     },
 
     'hrv' => +{ # heart rate variability
         0 => +{'name' => 'time', 'scale' => 1000, 'unit' => 's'},
+    },
+
+    'tank_update' => +{
+        253 => +{ 'name' => 'timestamp', 'type_name' => 'date_time' },
+        0 => +{ 'name' => 'sensor',   'type_name' => 'ant_channel_id'   },
+        1 => +{ 'name' => 'pressure', 'unit' => 'bar', 'scale' => 100 },
+    },
+
+    'tank_summary' => +{
+        253 => +{ 'name' => 'timestamp', 'type_name' => 'date_time' },
+        0 => +{ 'name' => 'sensor',         'type_name' => 'ant_channel_id' },
+        1 => +{ 'name' => 'start_pressure', 'unit' => 'bar', 'scale' => 100 },
+        2 => +{ 'name' => 'end_pressure',   'unit' => 'bar', 'scale' => 100 },
+        3 => +{ 'name' => 'volume_used',    'unit' => 'l', 'scale' => 100   },
     },
 
     'pad' => +{
@@ -6986,8 +7295,7 @@ my %msgtype_by_name = (
 my $mesg_name_vs_num = $named_type{mesg_num};
 
 my %msgtype_by_num = (
-    # =================== Unknown messages ===================
-    13 => +{
+    13 => +{                     # begins === Unknown messages === section
         '_number' => 13,
         254 => +{'name' => 'message_index', 'type_name' => 'message_index'},
         1 => +{'name' => 'unknown1'}, # unknown ENUM
