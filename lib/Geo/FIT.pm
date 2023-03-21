@@ -92,10 +92,6 @@ sub new {
 
 =over 4
 
-=item version_string()
-
-returns a string representing the version of this class.
-
 =item message_name(I<message spec>)
 
 returns the message name for I<message spec> or undef.
@@ -127,48 +123,6 @@ returns the endian (0 for little endian and 1 for big endian) of the current sys
 =back
 
 =cut
-
-my $version_major_scale = 100;
-
-sub version_major {
-    my ($self, $ver) = @_;
-    my $iver = int($ver);
-
-    if (wantarray) {
-        ($iver, int(($ver - $iver) * $version_major_scale));
-    }
-    else {
-        $iver;
-    }
-}
-
-sub version_minor {
-    my ($self, $ver) = @_;
-
-    if (wantarray) {
-        (int(($ver - int($ver)) * $version_major_scale), int($ver));
-    }
-    else {
-        int(($ver - int($ver)) * $version_major_scale);
-    }
-}
-
-my @version = &version_major(undef, $VERSION);
-
-sub version_string {
-    my $self = shift;
-
-    sprintf '%u.%02u', @_ ? $self->version_major(@_) : $self->version_major($VERSION);
-}
-
-sub version {
-    if (wantarray) {
-        @version;
-    }
-    else {
-        $VERSION;
-    }
-}
 
 my $my_endian = unpack('L', pack('N', 1)) == 1 ? 1 : 0;
 
@@ -225,17 +179,9 @@ sets the flag which of GMT or local timezone is used for C<date_time> type value
 
 returns a string representing the .FIT protocol version on which this class based.
 
-=item protocol_version_string(I<version number>)
-
-returns a string representing the .FIT protocol version I<version number>.
-
 =item profile_version_string()
 
 returns a string representing the .FIT protocol version on which this class based.
-
-=item profile_version_string(I<version number>)()
-
-returns a string representing the .FIT profile version I<version number>.
 
 =item data_message_callback_by_name(I<message name>, I<callback function>[, I<callback data>, ...])
 
@@ -294,116 +240,45 @@ apply I<endian converter> to the specified part of the scalar.
 =cut
 
 my $protocol_version_major_shift = 4;
-my $protocol_version_minor_mask = (1 << $protocol_version_major_shift) - 1;
+my $protocol_version_minor_mask  = (1 << $protocol_version_major_shift) - 1;
+my $protocol_version_header_crc_started = _protocol_version_from_string("1.0");
+my $profile_version_scale = 1000;
 
-sub protocol_version_major {
-    my ($self, $ver) = @_;
-
-    if (wantarray) {
-        ($ver >> $protocol_version_major_shift, $ver & $protocol_version_minor_mask);
-    }
-    else {
-        $ver >> $protocol_version_major_shift;
-    }
-}
-
-sub protocol_version_minor {
-    my ($self, $ver) = @_;
-
-    if (wantarray) {
-        ($ver & $protocol_version_minor_mask, $ver >> $protocol_version_major_shift);
-    }
-    else {
-        $ver & $protocol_version_minor_mask;
-    }
-}
-
-sub protocol_version_from_string {
-    my ($self, $s) = @_;
+sub _protocol_version_from_string {
+    my $s = shift;
     my ($major, $minor) = split /\./, $s, 2;
-
-    if (wantarray) {
-        ($major + 0, $minor & $protocol_version_minor_mask);
-    }
-    else {
-        ($major << $protocol_version_major_shift) | ($minor & $protocol_version_minor_mask);
-    }
-}
-
-my $protocol_version = &protocol_version_from_string(undef, "2.3");
-my @protocol_version = &protocol_version_major(undef, $protocol_version);
-my $protocol_version_header_crc_started = &protocol_version_from_string(undef, "1.0");
-
-sub protocol_version_string {
-    my $self = shift;
-
-    sprintf '%u.%u', @_ ? $self->protocol_version_major(@_) : $self->protocol_version_major($protocol_version);
+    return ($major + 0, $minor & $protocol_version_minor_mask) if wantarray; 
+    return ($major << $protocol_version_major_shift) | ($minor & $protocol_version_minor_mask)
 }
 
 sub protocol_version {
-    if (wantarray) {
-        @protocol_version;
-    }
-    else {
-        $protocol_version;
-    }
+    my $version = _protocol_version_from_string("2.3");
+    return ($version >> $protocol_version_major_shift, $version & $protocol_version_minor_mask) if wantarray;
+    return $version
 }
 
-my $profile_version_scale = 100;
-
-sub profile_version_major {
-    my ($self, $ver) = @_;
-
-    if (wantarray) {
-        (int($ver / $profile_version_scale), $ver % $profile_version_scale);
-    }
-    else {
-        int($ver / $profile_version_scale);
-    }
-}
-
-sub profile_version_minor {
-    my ($self, $ver) = @_;
-
-    if (wantarray) {
-        ($ver % $profile_version_scale, int($ver / $profile_version_scale));
-    }
-    else {
-        $ver % $profile_version_scale;
-    }
-}
-
-sub profile_version_from_string {
-    my ($self, $s) = @_;
+sub _profile_version_from_string {
+    my $s = shift;
     my ($major, $minor) = split /\./, $s, 2;
-
     if (wantarray) {
         croak "There is a bug when called in list context, this should be resolved soon";
         # $profile_version_minor_mask has not been declared nor is it used anywhere else
         # ($major + 0, $minor & $profile_version_minor_mask);
     }
-    else {
-        $major * $profile_version_scale + $minor % $profile_version_scale;
-    }
+    return $major * $profile_version_scale + $minor % $profile_version_scale
 }
 
-my $profile_version = &profile_version_from_string(undef, "21.107");
-my @profile_version = &profile_version_major(undef, $profile_version);
-
-sub profile_version_string {
-    my $self = shift;
-
-    sprintf '%u.%02u', @_ ? $self->profile_version_major(@_) : $self->profile_version_major($profile_version);
-}
-
+# odd that it's a method as we don't capture self, it's just that we want to provide easy access to the profile #
 sub profile_version {
-    if (wantarray) {
-        @profile_version;
-    }
-    else {
-        $profile_version;
-    }
+    my $version = _profile_version_from_string("21.107");
+    return (int($version / $profile_version_scale), $version % $profile_version_scale) if wantarray;
+    return $version
 }
+
+sub protocol_version_string { sprintf '%u.%u',   (protocol_version) }
+sub profile_version_string  { sprintf '%u.%03u', (profile_version)  }
+sub protocol_version_major  { shift->protocol_version };
+sub profile_version_major   { shift->profile_version  };
 
 # CRC calculation routine taken from
 #   Haruhiko Okumura, C gengo ni yoru algorithm dai jiten (1st ed.), GijutsuHyouronsha 1991.
