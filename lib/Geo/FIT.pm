@@ -69,625 +69,6 @@ our @EXPORT = qw(
                 FIT_HEADER_LENGTH
                 );
 
-=head2 Constructor
-
-=over 4
-
-=item new()
-
-creates a new object and returns it.
-
-=back
-
-=cut
-
-sub new {
-    my $class = shift;
-    my $self = +{};
-    bless $self, $class;
-    $self->initialize(@_);
-}
-
-=head2 Class methods
-
-=over 4
-
-=item message_name(I<message spec>)
-
-returns the message name for I<message spec> or undef.
-
-=item message_number(I<message spec>)
-
-returns the message number for I<message spec> or undef.
-
-=item field_name(I<message spec>, I<field spec>)
-
-returns the field name for I<field spec> in I<message spec> or undef.
-
-=item field_number(I<message spec>, I<field spec>)
-
-returns the field index for I<field spec> in I<message spec> or undef.
-
-=item cat_header(I<protocol version>, I<profile version>, I<file length>[, I<refrencne to a scalar>])
-
-composes the binary form of a .FIT file header, concatenates the scalar and it, and returns the reference to the scalar. If the 4th argument is omitted, it returns the reference to the binary form. I<file length> is assumed not to include the file header and trailing CRC.
-
-=item crc_of_string(I<old CRC>, I<reference to a scalar>, I<offset in scalar>, I<counts>)
-
-calculate CRC-16 of the specified part of the scalar.
-
-=item my_endian
-
-returns the endian (0 for little endian and 1 for big endian) of the current system.
-
-=back
-
-=cut
-
-my $my_endian = unpack('L', pack('N', 1)) == 1 ? 1 : 0;
-
-sub my_endian {
-    $my_endian;
-}
-
-sub verbose {
-    my $self = shift;
-
-    if (@_) {
-        $self->{verbose} = $_[0];
-    }
-    else {
-        $self->{verbose};
-    }
-}
-
-=head2 Object methods
-
-=over 4
-
-=item file(I<file name>)
-
-sets the name I<file name> of a .FIT file.
-
-=item open()
-
-opens the .FIT file.
-
-=item fetch_header()
-
-reads .FIT file header, and returns an array of the file size (excluding the trailing CRC-16), the protocol version, the profile version, extra octets in the header other than documented 4 values, the header CRC-16 recorded in the header, and the calculated header CRC-16.
-
-=item fetch()
-
-reads a message in the .FIT file, and returns C<1> on success, or C<undef> on failure or EOF.
-
-=item unit_table(I<unit> => I<unit conversion table>)
-
-sets I<unit conversion table> for I<unit>.
-
-=item semicircles_to_degree(I<boolean>)
-
-=item mps_to_kph(I<boolean>)
-
-wrapper methods of C<unit_table()> method.
-
-=item use_gmtime(I<boolean>)
-
-sets the flag which of GMT or local timezone is used for C<date_time> type value conversion.
-
-=item protocol_version_string()
-
-returns a string representing the .FIT protocol version on which this class based.
-
-=item profile_version_string()
-
-returns a string representing the .FIT protocol version on which this class based.
-
-=item data_message_callback_by_name(I<message name>, I<callback function>[, I<callback data>, ...])
-
-register a function I<callback function> which is called when a data message with the name I<message name> is fetched.
-
-=item data_message_callback_by_num(I<message number>, I<callback function>[, I<callback data>, ...])
-
-register a function I<callback function> which is called when a data message with the messag number I<message number> is fetched.
-
-=item switched(I<data message descriptor>, I<array of values>, I<data type table>)
-
-returns real data type attributes for a C's union like field.
-
-=item string_value(I<array of values>, I<offset in the array>, I<counts>)
-
-converts an array of character codes to a Perl string.
-
-=item value_cooked(I<type name>, I<field attributes table>, I<invalid>, I<value>)
-
-converts I<value> to a (hopefully) human readable form.
-
-=item value_uncooked(I<type name>, I<field attributes table>, I<invalid>, I<value representation>)
-
-converts a human readable representation of a datum to an original form.
-
-=item error()
-
-returns an error message recorded by a method.
-
-=item crc_expected()
-
-CRC-16 attached to the end of a .FIT file. Only available after all contents of the file has been read.
-
-=item crc()
-
-CRC-16 calculated from the contents of a .FIT file.
-
-=item trailing_garbages()
-
-number of octets after CRC-16, 0 usually.
-
-=item close()
-
-closes opened file handles.
-
-=item cat_definition_message(I<data message descriptor>[, I<reference to a scalar>])
-
-composes the binary form of a definition message after I<data message descriptor>, concatenates the scalar and it, and returns the reference to the scalar. If the 2nd argument is omitted, returns the reference to the binary form.
-
-=item endian_convert(I<endian converter>, I<reference to a scalar>, I<offset in the scalar>)
-
-apply I<endian converter> to the specified part of the scalar.
-
-=back
-
-=cut
-
-my $protocol_version_major_shift = 4;
-my $protocol_version_minor_mask  = (1 << $protocol_version_major_shift) - 1;
-my $protocol_version_header_crc_started = _protocol_version_from_string("1.0");
-my $profile_version_scale = 1000;
-
-sub _protocol_version_from_string {
-    my $s = shift;
-    my ($major, $minor) = split /\./, $s, 2;
-    return ($major + 0, $minor & $protocol_version_minor_mask) if wantarray; 
-    return ($major << $protocol_version_major_shift) | ($minor & $protocol_version_minor_mask)
-}
-
-sub protocol_version {
-    my $version = _protocol_version_from_string("2.3");
-    return ($version >> $protocol_version_major_shift, $version & $protocol_version_minor_mask) if wantarray;
-    return $version
-}
-
-sub _profile_version_from_string {
-    my $s = shift;
-    my ($major, $minor) = split /\./, $s, 2;
-    if (wantarray) {
-        croak "There is a bug when called in list context, this should be resolved soon";
-        # $profile_version_minor_mask has not been declared nor is it used anywhere else
-        # ($major + 0, $minor & $profile_version_minor_mask);
-    }
-    return $major * $profile_version_scale + $minor % $profile_version_scale
-}
-
-# odd that it's a method as we don't capture self, it's just that we want to provide easy access to the profile #
-sub profile_version {
-    my $version = _profile_version_from_string("21.107");
-    return (int($version / $profile_version_scale), $version % $profile_version_scale) if wantarray;
-    return $version
-}
-
-sub protocol_version_string { sprintf '%u.%u',   (protocol_version) }
-sub profile_version_string  { sprintf '%u.%03u', (profile_version)  }
-sub protocol_version_major  { shift->protocol_version };
-sub profile_version_major   { shift->profile_version  };
-
-# CRC calculation routine taken from
-#   Haruhiko Okumura, C gengo ni yoru algorithm dai jiten (1st ed.), GijutsuHyouronsha 1991.
-
-my $crc_poly = 2 ** 16 + 2 ** 15 + 2 ** 2 + 2 ** 0; # CRC-16
-my ($crc_poly_deg, $crc_poly_rev);
-my ($x, $y, $i);
-for ($crc_poly_deg = 0, $x = $crc_poly ; $x >>= 1 ;) {
-    ++$crc_poly_deg;
-}
-my $crc_octets = int($crc_poly_deg / 8 + 0.5);
-for ($crc_poly_rev = 0, $y = 1, $x = 2 ** ($crc_poly_deg - 1) ; $x ;) {
-    $crc_poly_rev |= $y if $x & $crc_poly;
-    $y <<= 1;
-    $x >>= 1;
-}
-my @crc_table = ();
-for ($i = 0 ; $i < 2 ** 8 ; ++$i) {
-    my $r = $i;
-    my $j;
-    for ($j = 0 ; $j < 8 ; ++$j) {
-        if ($r & 1) {
-            $r = ($r >> 1) ^ $crc_poly_rev;
-        }
-        else {
-            $r >>= 1;
-        }
-    }
-    $crc_table[$i] = $r;
-}
-
-sub dump {
-    my ($self, $s, $FH) = @_;
-    my ($i, $d);
-    for ($i = 0 ; $i < length($s) ;) {
-        $FH->printf(' %03u', ord(substr($s, $i++, 1)));
-    }
-}
-
-sub safe_isa {
-    eval {$_[0]->isa($_[1])};
-}
-
-sub error_callback {
-    my $self = shift;
-    if (@_) {
-        if (&safe_isa($_[0], 'CODE')) {
-            $self->{error_callback_argv} = [@_[1 .. $#_]];
-            $self->{error_callback} = $_[0];
-        }
-        else {
-            undef;
-        }
-    }
-    else {
-        $self->{error_callback};
-    }
-}
-
-sub error {
-    my $self = shift;
-    if (@_) {
-        my ($p, $fn, $l, $subr, $fit);
-
-        (undef, $fn, $l) = caller(0);
-        ($p, undef, undef, $subr) = caller(1);
-        $fit = $self->file;
-        $fit .= ': ' if $fit ne '';
-
-        $self->{error} = "${p}::$subr\#$l\@$fn: $fit$_[0]";
-
-        if (&safe_isa($self->{error_callback}, 'CODE')) {
-            my $argv = &safe_isa($self->{error_callback_argv}, 'ARRAY') ? $self->{error_callback_argv} : [];
-
-            $self->{error_callback}->($self, @$argv);
-        }
-        else {
-            undef;
-        }
-    }
-    else {
-        $self->{error};
-    }
-}
-
-sub file_read {
-    my $self = shift;
-    if (@_) {
-        $self->{file_read} = $_[0];
-    }
-    else {
-        $self->{file_read};
-    }
-}
-
-sub file_size {
-    my $self = shift;
-    if (@_) {
-        $self->{file_size} = $_[0];
-    }
-    else {
-        $self->{file_size};
-    }
-}
-
-sub file_processed {
-    my $self = shift;
-    if (@_) {
-        $self->{file_processed} = $_[0];
-    }
-    else {
-        $self->{file_processed};
-    }
-}
-
-sub crc {
-    my $self = shift;
-    if (@_) {
-        $self->{crc} = $_[0];
-    }
-    else {
-        $self->{crc};
-    }
-}
-
-sub offset {
-    my $self = shift;
-    if (@_) {
-        $self->{offset} = $_[0];
-    }
-    else {
-        $self->{offset};
-    }
-}
-
-sub buffer {
-    my $self = shift;
-    if (@_) {
-        $self->{buffer} = $_[0];
-    }
-    else {
-        $self->{buffer};
-    }
-}
-
-sub crc_of_string {
-    my ($self, $crc, $p, $b, $n) = @_;
-    my $e = $b + $n;
-    while ($b < $e) {
-        $crc = ($crc >> 8) ^ $crc_table[($crc & (2 ** 8 - 1)) ^ ord(substr($$p, $b++, 1))];
-    }
-    $crc;
-}
-
-sub crc_calc {
-    my ($self, $m) = @_;
-    my $over = $self->file_read - $self->file_size;
-    $over = 0 if $over < 0;
-
-    if ($m > $over) {
-        my $buffer = $self->buffer;
-        $self->crc($self->crc_of_string($self->crc, $buffer, length($$buffer) - $m, $m - $over));
-    }
-}
-
-sub crc_expected {
-    my $self = shift;
-    if (@_) {
-        $self->{crc_expected} = $_[0];
-    }
-    else {
-        $self->{crc_expected};
-    }
-}
-
-sub trailing_garbages {
-    my $self = shift;
-    if (@_) {
-        $self->{trailing_garbages} = $_[0];
-    }
-    else {
-        $self->{trailing_garbages};
-    }
-}
-
-sub maybe_chained {
-    my $self = shift;
-    if (@_) {
-        $self->{maybe_chained} = $_[0];
-    }
-    else {
-        $self->{maybe_chained};
-    }
-}
-
-sub really_clear_buffer {
-    my $self = shift;
-    my $buffer = $self->{buffer};
-
-    $self->crc_calc(length($$buffer)) if !defined $self->crc;
-    $self->file_processed($self->file_processed + $self->offset);
-    substr($$buffer, 0, $self->offset) = '';
-    $self->offset(0);
-}
-
-sub cp_fit {
-    my $self = shift;
-    if (@_) {
-        $self->{cp_fit} = $_[0];
-    }
-    else {
-        $self->{cp_fit};
-    }
-}
-
-sub cp_fit_FH {
-    my $self = shift;
-    if (@_) {
-        $self->{cp_fit_FH} = $_[0];
-    }
-    else {
-        $self->{cp_fit_FH};
-    }
-}
-
-sub clear_buffer {
-    my $self = shift;
-    if ($self->offset > 0) {
-        if ($self->cp_fit) {
-            my $FH = $self->cp_fit_FH;
-
-            if (&safe_isa($FH, 'FileHandle') && $FH->opened) {
-                my $buffer = $self->buffer;
-
-                $FH->print(substr($$buffer, 0, $self->offset));
-                $FH->flush;
-                $self->really_clear_buffer;
-            }
-        }
-        else {
-            $self->really_clear_buffer;
-        }
-    }
-}
-
-sub file {
-    my $self = shift;
-    if (@_) {
-        $self->{file} = $_[0];
-    }
-    else {
-        $self->{file};
-    }
-}
-
-sub FH {
-    my $self = shift;
-    if (@_) {
-        $self->{FH} = $_[0];
-    }
-    else {
-        $self->{FH};
-    }
-}
-
-sub EOF {
-    my $self = shift;
-    if (@_) {
-        $self->{EOF} = $_[0];
-    }
-    else {
-        $self->{EOF};
-    }
-}
-
-sub end_of_chunk {
-    my $self = shift;
-    if (@_) {
-        $self->{end_of_chunk} = $_[0];
-    }
-    else {
-        $self->{end_of_chunk};
-    }
-}
-
-sub fill_buffer {
-    my ($self, $req) = @_;
-    my $buffer = $self->buffer;
-    my $FH = $self->FH;
-
-    while (length($$buffer) - $self->offset < $req) {
-        $self->clear_buffer;
-
-        my $n = $FH->read($$buffer, BUFSIZ, length($$buffer));
-
-        if ($n > 0) {
-            $self->file_read($self->file_read + $n);
-
-            if (defined $self->file_size) {
-                if (defined $self->crc) {
-                    $self->crc_calc($n);
-                }
-                else {
-                    $self->crc_calc(length($$buffer));
-                }
-            }
-        }
-        else {
-            if (defined $n) {
-                $self->error("unexpected EOF");
-                $self->EOF(1);
-            }
-            else {
-                $self->error("read(FH): $!");
-            }
-
-            return undef;
-        }
-    }
-    1;
-}
-
-my $header_template = 'C C v V V';
-my $header_length = length(pack($header_template));
-
-sub FIT_HEADER_LENGTH {
-    $header_length;
-}
-
-my $FIT_signature_string = '.FIT';
-my $FIT_signature = unpack('V', $FIT_signature_string);
-
-my $header_crc_template = 'v';
-my $header_crc_length = length(pack($header_crc_template));
-
-sub fetch_header {
-    my $self = shift;
-    $self->fill_buffer($header_length) || return undef;
-
-    my $buffer = $self->buffer;
-    my $h_min = substr($$buffer, $self->offset, $header_length);
-    my ($h_len, $proto_ver, $prof_ver, $f_len, $sig) = unpack($header_template, $h_min);
-
-    $self->offset($self->offset + $header_length);
-
-    if ($h_len < $header_length) {
-        $self->error("not a .FIT header ($h_len < $header_length)");
-        ();
-    }
-    else {
-        my $extra;
-
-        if ($h_len > $header_length) {
-            $self->fill_buffer($h_len - $header_length) || return undef;
-            $extra = substr($$buffer, $self->offset, $h_len - $header_length);
-            $self->offset($self->offset + $h_len - $header_length);
-        }
-
-        if ($sig != $FIT_signature) {
-            $self->error("not a .FIT header (" .
-                    join('', map {($_ ne "\\" && 0x20 >= ord($_) && ord($_) <= 0x7E) ? $_ : sprintf("\\x%02X", ord($_))} split //, pack('V', $sig))
-                    . " ne '$FIT_signature_string')");
-            ();
-        }
-        else {
-            my ($crc_expected, $crc_calculated);
-
-            if ($proto_ver >= $protocol_version_header_crc_started && length($extra) >= $header_crc_length) {
-                $crc_expected = unpack($header_crc_template, substr($extra, -$header_crc_length));
-                substr($extra, -$header_crc_length) = '';
-                $crc_calculated = $self->crc_of_string(0, \$h_min, 0, $header_length);
-            }
-
-            my $f_size = $f_len + $h_len;
-
-            $self->file_size($f_size);
-
-            unless (defined $self->crc) {
-                $self->crc(0);
-                $self->crc_calc(length($$buffer));
-            }
-
-            ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated);
-        }
-    }
-}
-
-sub cat_header {
-    my ($self, $proto_ver, $prof_ver, $f_len, $p, $p_extra) = @_;
-    if (!defined $p) {
-        my $bin = '';
-
-        $p = \$bin;
-    }
-    my $h_len = $header_length;
-
-    ref $p_extra eq 'SCALAR' and $h_len += length($$p_extra);
-    $proto_ver >= $protocol_version_header_crc_started and $h_len += $header_crc_length;
-
-    my $h_start = length($$p);
-
-    $$p .= pack($header_template, $h_len, $proto_ver, $prof_ver, $f_len, $FIT_signature);
-    ref $p_extra eq 'SCALAR' and $$p .= $$p_extra;
-
-    $proto_ver >= $protocol_version_header_crc_started and
-        $$p .= pack($header_crc_template, $self->crc_of_string(0, $p, $h_start, length($$p) - $h_start));
-    $p;
-}
-
 sub FIT_ENUM() {0;}
 sub FIT_SINT8() {1;}
 sub FIT_UINT8() {2;}
@@ -757,8 +138,7 @@ my ($big_int_base32, $sint64_2c_mask, $sint64_2c_base, $sint64_2c_sign);
 if (defined $uint64_invalid) {
     $invalid[FIT_UINT64] = $uint64_invalid;
     $invalid[FIT_SINT64] = eval '0x7FFFFFFFFFFFFFFF';
-}
-else {
+} else {
     $invalid[FIT_UINT64] = Math::BigInt->new('0xFFFFFFFFFFFFFFFF');
     $invalid[FIT_SINT64] = Math::BigInt->new('0x7FFFFFFFFFFFFFFF');
     $big_int_base32 = Math::BigInt->new('0x100000000');
@@ -777,6 +157,8 @@ sub packfilter_uint64_little_endian {
     @res[1, 0];
 }
 
+my $my_endian = unpack('L', pack('N', 1)) == 1 ? 1 : 0;
+
 *packfilter_uint64 = $my_endian ? \&packfilter_uint64_big_endian : \&packfilter_uint64_little_endian;
 
 sub unpackfilter_uint64_big_endian {
@@ -793,8 +175,7 @@ sub unpackfilter_uint64_little_endian {
 sub packfilter_sint64_big_endian {
     if ($_[0]->bcmp(0) < 0) {
         &packfilter_uint64_big_endian($sint64_2c_mask->band($sint64_2c_base->badd($_[0])));
-    }
-    else {
+    } else {
         &packfilter_uint64_big_endian($_[0]);
     }
 }
@@ -802,8 +183,7 @@ sub packfilter_sint64_big_endian {
 sub packfilter_sint64_little_endian {
     if ($_[0]->bcmp(0) < 0) {
         &packfilter_uint64_little_endian($sint64_2c_mask->band($sint64_2c_base->badd($_[0])));
-    }
-    else {
+    } else {
         &packfilter_uint64_little_endian($_[0]);
     }
 }
@@ -816,8 +196,7 @@ sub unpackfilter_sint64_big_endian {
 
     if ($n->band($sint64_2c_sign)->bcmp(0) == 0) {
         $n;
-    }
-    else {
+    } else {
         $n->bsub($sint64_2c_base);
     }
 }
@@ -855,8 +234,7 @@ $template[FIT_FLOAT64] = 'd';
 if (defined $uint64_invalid) {
     $template[FIT_SINT64] = 'q';
     $template[FIT_UINT64] = $template[FIT_UINT64Z] = 'Q';
-}
-else {
+} else {
     $template[FIT_SINT64] = $template[FIT_UINT64] = $template[FIT_UINT64Z] = 'L';
     $packfactor[FIT_SINT64] = $packfactor[FIT_UINT64] = $packfactor[FIT_UINT64Z] = 2;
     $packfilter[FIT_SINT64] = \&packfilter_sint64;
@@ -5058,130 +4436,18 @@ my %named_type = (
 
     );
 
-my ($typenam, $typedesc);
-
-foreach $typenam (keys %named_type) {
-    $typedesc = $named_type{$typenam};
-
-    if (defined $typedesc->{_moved_to} && $typedesc->{_moved_to} ne '') {
+for my $typenam (keys %named_type) {        # if a type was _moved_to, copy the new href to $named_type{$typenam}
+    my $typedesc = $named_type{$typenam};
+    if (defined $typedesc->{_moved_to} and $typedesc->{_moved_to} ne '') {
+        if ($typenam ne 'device_type') { $DB::single=1 }            # want to know if it applies to others
         my $to = $named_type{$typedesc->{_moved_to}};
-        ref $to eq 'HASH' and $named_type{$typenam} = +{%$to};
+        $named_type{$typenam} = {%$to} if ref $to eq 'HASH'
     }
 }
-
-while ((undef, $typedesc) = each %named_type) {
-    my $name;
-    foreach $name (grep {!/^_/} keys %$typedesc) {
-        $typedesc->{$typedesc->{$name}} = $name;
-    }
-}
-
-my $use_gmtime = 0;
-
-sub use_gmtime {
-    my $self = shift;
-
-    if (@_) {
-        if (ref $self eq '') {
-            $use_gmtime = $_[0];
-        }
-        else {
-            $self->{use_gmtime} = $_[0];
-        }
-    }
-    elsif (ref $self eq '') {
-        $use_gmtime;
-    }
-    else {
-        $self->{use_gmtime};
-    }
-}
-
-sub numeric_date_time {
-    my $self = shift;
-    if (@_) {
-        $self->{numeric_date_time} = $_[0];
-    }
-    else {
-        $self->{numeric_date_time};
-    }
-}
-
-sub date_string {
-    my ($self, $time) = @_;
-    my ($s, $mi, $h, $d, $mo, $y, $gmt) = $self->use_gmtime ? ((gmtime($time))[0 .. 5], 'Z') : (localtime($time))[0 .. 5];
-    sprintf('%04u-%02u-%02uT%02u:%02u:%02u%s', $y + 1900, $mo + 1, $d, $h, $mi, $s, $gmt);
-}
-
-sub named_type_value {
-    my ($self, $type_name, $val) = @_;
-    my $typedesc = $named_type{$type_name};
-
-    if (ref $typedesc ne 'HASH') {
-        $self->error("$type_name is not a named type");
-    }
-    elsif ($typedesc->{_mask}) {
-        if ($val !~ /^[-+]?\d+$/) {
-            my $num = 0;
-            my $expr;
-
-            foreach $expr (split /,/, $val) {
-                $expr =~ s/^.*=//;
-
-                if ($expr =~ s/^0[xX]//) {
-                    $num |= hex($expr);
-                }
-                else {
-                    $num |= $expr + 0;
-                }
-            }
-
-            $num;
-        }
-        else {
-            my $mask = 0;
-            my (@key, $key);
-
-            foreach $key (sort {$typedesc->{$b} <=> $typedesc->{$a}} grep {/^[A-Za-z]/} keys %$typedesc) {
-                push @key, $key . '=' . ($val & $typedesc->{$key});
-                $mask |= $typedesc->{$key};
-            }
-
-            my $rest = $val & ~$mask & ((1 << ($size[$typedesc->{_base_type}] * 8)) - 1);
-
-            if ($rest) {
-                my $width = $size[$typedesc->{_base_type}] * 2;
-
-                join(',', @key, sprintf("0x%0${width}X", $rest));
-            }
-            elsif (@key) {
-                join(',', @key);
-            }
-            else {
-                0;
-            }
-        }
-    }
-    elsif ($type_name eq 'date_time') {
-        if ($val !~ /^[-+]?\d+$/) {
-            my ($y, $mo, $d, $h, $mi, $s, $gmt) = $val =~ /(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)([zZ]?)/;
-
-            ($gmt ne '' ? timegm($s, $mi, $h, $d, $mo - 1, $y - 1900) : timelocal($s, $mi, $h, $d, $mo - 1, $y - 1900)) + $typedesc->{_offset};
-        }
-        elsif ($val >= $typedesc->{_min} && $val != $invalid[$typedesc->{_base_type}]) {
-            if ($self->numeric_date_time) {
-                $val - $typedesc->{_offset};
-            }
-            else {
-                $self->date_string($val - $typedesc->{_offset});
-            }
-        }
-        else {
-            undef;
-        }
-    }
-    else {
-        $typedesc->{$val};
+while (my ($typenam, $typedesc) = each %named_type) {
+    # copy and flip key/value pairs of all hrefs in %named_type (except _base_type, _mask, …)
+    for my $name (grep {!/^_/} keys %$typedesc) {
+        $typedesc->{$typedesc->{$name}} = $name
     }
 }
 
@@ -7167,8 +6433,6 @@ my %msgtype_by_name = (
 
     );
 
-my $mesg_name_vs_num = $named_type{mesg_num};
-
 my %msgtype_by_num = (
     13 => +{                     # begins === Unknown messages === section
         '_number' => 13,
@@ -7355,17 +6619,16 @@ my %msgtype_by_num = (
 
     );
 
-my $msgname;
+my $mesg_name_vs_num = $named_type{mesg_num};
 
-foreach $msgname (keys %msgtype_by_name) {
+for my $msgname (keys %msgtype_by_name) {
     my $msgtype = $msgtype_by_name{$msgname};
 
     $msgtype->{_name} = $msgname;
     $msgtype->{_number} = $mesg_name_vs_num->{$msgname};
     $msgtype_by_num{$msgtype->{_number}} = $msgtype;
 
-    my $fldnum;
-    foreach $fldnum (grep {/^\d+$/} keys %$msgtype) {
+    for my $fldnum (grep {/^\d+$/} keys %$msgtype) {
         my $flddesc = $msgtype->{$fldnum};
 
         $flddesc->{number} = $fldnum;
@@ -7373,14 +6636,48 @@ foreach $msgname (keys %msgtype_by_name) {
     }
 }
 
+=head2 Constructor Methods (class)
+
+=over 4
+
+=item new()
+
+creates a new object and returns it.
+
+=back
+
+=cut
+
+sub new {
+    my $class = shift;
+    my $self = +{};
+    bless $self, $class;
+    $self->initialize(@_);
+}
+
+=head2 Class methods
+
+=over 4
+
+=item message_name(I<message spec>)
+
+returns the message name for I<message spec> or undef.
+
+=item message_number(I<message spec>)
+
+returns the message number for I<message spec> or undef.
+
+=back
+
+=cut
+
 sub message_name {
     my ($self, $mspec) = @_;
     my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
 
     if (ref $msgtype eq 'HASH') {
         $msgtype->{_name};
-    }
-    else {
+    } else {
         undef;
     }
 }
@@ -7391,11 +6688,24 @@ sub message_number {
 
     if (ref $msgtype eq 'HASH') {
         $msgtype->{_number};
-    }
-    else {
+    } else {
         undef;
     }
 }
+
+=over 4
+
+=item field_name(I<message spec>, I<field spec>)
+
+returns the field name for I<field spec> in I<message spec> or undef.
+
+=item field_number(I<message spec>, I<field spec>)
+
+returns the field index for I<field spec> in I<message spec> or undef.
+
+=back
+
+=cut
 
 sub field_name {
     my ($self, $mspec, $fspec) = @_;
@@ -7421,13 +6731,664 @@ sub field_number {
     undef;
 }
 
+=over 4
+
+=item protocol_version_string()
+
+returns a string representing the .FIT protocol version on which this class based.
+
+=item profile_version_string()
+
+returns a string representing the .FIT protocol version on which this class based.
+
+=back
+
+=cut
+
+my $protocol_version_major_shift = 4;
+my $protocol_version_minor_mask  = (1 << $protocol_version_major_shift) - 1;
+my $protocol_version_header_crc_started = _protocol_version_from_string("1.0");
+my $profile_version_scale = 1000;
+
+sub _protocol_version_from_string {
+    my $s = shift;
+    my ($major, $minor) = split /\./, $s, 2;
+    return ($major + 0, $minor & $protocol_version_minor_mask) if wantarray;
+    return ($major << $protocol_version_major_shift) | ($minor & $protocol_version_minor_mask)
+}
+
+sub protocol_version {
+    my $version = _protocol_version_from_string("2.3");
+    return ($version >> $protocol_version_major_shift, $version & $protocol_version_minor_mask) if wantarray;
+    return $version
+}
+
+sub _profile_version_from_string {
+    my $s = shift;
+    my ($major, $minor) = split /\./, $s, 2;
+    if (wantarray) {
+        croak "There is a bug when called in list context, this should be resolved soon";
+        # $profile_version_minor_mask has not been declared nor is it used anywhere else
+        # ($major + 0, $minor & $profile_version_minor_mask);
+    }
+    return $major * $profile_version_scale + $minor % $profile_version_scale
+}
+
+# odd that it's a method as we don't capture self, it's just that we want to provide easy access to the profile #
+sub profile_version {
+    my $version = _profile_version_from_string("21.107");
+    return (int($version / $profile_version_scale), $version % $profile_version_scale) if wantarray;
+    return $version
+}
+
+sub protocol_version_string { sprintf '%u.%u',   (protocol_version) }
+sub profile_version_string  { sprintf '%u.%03u', (profile_version)  }
+sub protocol_version_major  { shift->protocol_version };
+sub profile_version_major   { shift->profile_version  };
+
+# CRC calculation routine taken from
+#   Haruhiko Okumura, C gengo ni yoru algorithm dai jiten (1st ed.), GijutsuHyouronsha 1991.
+
+my $crc_poly = 2 ** 16 + 2 ** 15 + 2 ** 2 + 2 ** 0; # CRC-16
+my ($crc_poly_deg, $crc_poly_rev);
+my ($x, $y, $i);
+for ($crc_poly_deg = 0, $x = $crc_poly ; $x >>= 1 ;) {
+    ++$crc_poly_deg;
+}
+my $crc_octets = int($crc_poly_deg / 8 + 0.5);
+for ($crc_poly_rev = 0, $y = 1, $x = 2 ** ($crc_poly_deg - 1) ; $x ;) {
+    $crc_poly_rev |= $y if $x & $crc_poly;
+    $y <<= 1;
+    $x >>= 1;
+}
+my @crc_table = ();
+for ($i = 0 ; $i < 2 ** 8 ; ++$i) {
+    my $r = $i;
+    my $j;
+    for ($j = 0 ; $j < 8 ; ++$j) {
+        if ($r & 1) {
+            $r = ($r >> 1) ^ $crc_poly_rev;
+        } else {
+            $r >>= 1;
+        }
+    }
+    $crc_table[$i] = $r;
+}
+
+sub dump {
+    my ($self, $s, $FH) = @_;
+    my ($i, $d);
+    for ($i = 0 ; $i < length($s) ;) {
+        $FH->printf(' %03u', ord(substr($s, $i++, 1)));
+    }
+}
+
+sub safe_isa {
+    eval {$_[0]->isa($_[1])};
+}
+
+sub file_read {
+    my $self = shift;
+    if (@_) {
+        $self->{file_read} = $_[0];
+    } else {
+        $self->{file_read};
+    }
+}
+
+sub file_size {
+    my $self = shift;
+    if (@_) {
+        $self->{file_size} = $_[0];
+    } else {
+        $self->{file_size};
+    }
+}
+
+sub file_processed {
+    my $self = shift;
+    if (@_) {
+        $self->{file_processed} = $_[0];
+    } else {
+        $self->{file_processed};
+    }
+}
+
+sub offset {
+    my $self = shift;
+    if (@_) {
+        $self->{offset} = $_[0];
+    } else {
+        $self->{offset};
+    }
+}
+
+sub buffer {
+    my $self = shift;
+    if (@_) {
+        $self->{buffer} = $_[0];
+    } else {
+        $self->{buffer};
+    }
+}
+
+sub maybe_chained {
+    my $self = shift;
+    if (@_) {
+        $self->{maybe_chained} = $_[0];
+    } else {
+        $self->{maybe_chained};
+    }
+}
+
+sub really_clear_buffer {
+    my $self = shift;
+    my $buffer = $self->{buffer};
+
+    $self->crc_calc(length($$buffer)) if !defined $self->crc;
+    $self->file_processed($self->file_processed + $self->offset);
+    substr($$buffer, 0, $self->offset) = '';
+    $self->offset(0);
+}
+
+sub cp_fit {
+    my $self = shift;
+    if (@_) {
+        $self->{cp_fit} = $_[0];
+    } else {
+        $self->{cp_fit};
+    }
+}
+
+sub cp_fit_FH {
+    my $self = shift;
+    if (@_) {
+        $self->{cp_fit_FH} = $_[0];
+    } else {
+        $self->{cp_fit_FH};
+    }
+}
+
+sub clear_buffer {
+    my $self = shift;
+    if ($self->offset > 0) {
+        if ($self->cp_fit) {
+            my $FH = $self->cp_fit_FH;
+
+            if (&safe_isa($FH, 'FileHandle') && $FH->opened) {
+                my $buffer = $self->buffer;
+
+                $FH->print(substr($$buffer, 0, $self->offset));
+                $FH->flush;
+                $self->really_clear_buffer;
+            }
+        } else {
+            $self->really_clear_buffer;
+        }
+    }
+}
+
+=head2 Object methods
+
+=over 4
+
+=item file(I<file name>)
+
+sets the name I<file name> of a .FIT file.
+
+=back
+
+=cut
+
+sub file {
+    my $self = shift;
+    if (@_) {
+        $self->{file} = $_[0];
+    } else {
+        $self->{file};
+    }
+}
+
+=over 4
+
+=item open()
+
+opens the .FIT file.
+
+=back
+
+=cut
+
+sub open {
+    my $self = shift;
+    my $fn = $self->file;
+
+    if ($fn ne '') {
+        my $FH = $self->FH;
+
+        if ($FH->open("< $fn")) {
+            if (binmode $FH, ':raw') {
+                1;
+            } else {
+                $self->error("binmode \$FH, ':raw': $!");
+            }
+        } else {
+            $self->error("\$FH->open(\"< $fn\"): $!");
+        }
+    } else {
+        $self->error('no file name given');
+    }
+}
+
+sub FH {
+    my $self = shift;
+    if (@_) {
+        $self->{FH} = $_[0];
+    } else {
+        $self->{FH};
+    }
+}
+
+sub EOF {
+    my $self = shift;
+    if (@_) {
+        $self->{EOF} = $_[0];
+    } else {
+        $self->{EOF};
+    }
+}
+
+sub end_of_chunk {
+    my $self = shift;
+    if (@_) {
+        $self->{end_of_chunk} = $_[0];
+    } else {
+        $self->{end_of_chunk};
+    }
+}
+
+sub fill_buffer {
+    my ($self, $req) = @_;
+    my $buffer = $self->buffer;
+    my $FH = $self->FH;
+
+    while (length($$buffer) - $self->offset < $req) {
+        $self->clear_buffer;
+
+        my $n = $FH->read($$buffer, BUFSIZ, length($$buffer));
+
+        if ($n > 0) {
+            $self->file_read($self->file_read + $n);
+
+            if (defined $self->file_size) {
+                if (defined $self->crc) {
+                    $self->crc_calc($n);
+                } else {
+                    $self->crc_calc(length($$buffer));
+                }
+            }
+        } else {
+            if (defined $n) {
+                $self->error("unexpected EOF");
+                $self->EOF(1);
+            } else {
+                $self->error("read(FH): $!");
+            }
+
+            return undef;
+        }
+    }
+    1;
+}
+
+my $header_template = 'C C v V V';
+my $header_length = length(pack($header_template));
+
+sub FIT_HEADER_LENGTH {
+    $header_length;
+}
+
+my $FIT_signature_string = '.FIT';
+my $FIT_signature = unpack('V', $FIT_signature_string);
+
+my $header_crc_template = 'v';
+my $header_crc_length = length(pack($header_crc_template));
+
+=over 4
+
+=item fetch_header()
+
+reads .FIT file header, and returns an array of the file size (excluding the trailing CRC-16), the protocol version, the profile version, extra octets in the header other than documented 4 values, the header CRC-16 recorded in the header, and the calculated header CRC-16.
+
+=back
+
+=cut
+
+sub fetch_header {
+    my $self = shift;
+    $self->fill_buffer($header_length) || return undef;
+
+    my $buffer = $self->buffer;
+    my $h_min = substr($$buffer, $self->offset, $header_length);
+    my ($h_len, $proto_ver, $prof_ver, $f_len, $sig) = unpack($header_template, $h_min);
+
+    $self->offset($self->offset + $header_length);
+
+    if ($h_len < $header_length) {
+        $self->error("not a .FIT header ($h_len < $header_length)");
+        ();
+    } else {
+        my $extra;
+
+        if ($h_len > $header_length) {
+            $self->fill_buffer($h_len - $header_length) || return undef;
+            $extra = substr($$buffer, $self->offset, $h_len - $header_length);
+            $self->offset($self->offset + $h_len - $header_length);
+        }
+
+        if ($sig != $FIT_signature) {
+            $self->error("not a .FIT header (" .
+                    join('', map {($_ ne "\\" && 0x20 >= ord($_) && ord($_) <= 0x7E) ? $_ : sprintf("\\x%02X", ord($_))} split //, pack('V', $sig))
+                    . " ne '$FIT_signature_string')");
+            ();
+        } else {
+            my ($crc_expected, $crc_calculated);
+
+            if ($proto_ver >= $protocol_version_header_crc_started && length($extra) >= $header_crc_length) {
+                $crc_expected = unpack($header_crc_template, substr($extra, -$header_crc_length));
+                substr($extra, -$header_crc_length) = '';
+                $crc_calculated = $self->crc_of_string(0, \$h_min, 0, $header_length);
+            }
+
+            my $f_size = $f_len + $h_len;
+
+            $self->file_size($f_size);
+
+            unless (defined $self->crc) {
+                $self->crc(0);
+                $self->crc_calc(length($$buffer));
+            }
+
+            ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated);
+        }
+    }
+}
+
+=over 4
+
+=item fetch()
+
+reads a message in the .FIT file, and returns C<1> on success, or C<undef> on failure or EOF.
+
+=back
+
+=cut
+
+sub fetch {
+    my $self = shift;
+
+    $self->fill_buffer($crc_octets) || return undef;
+
+    my $buffer = $self->buffer;
+    my $i = $self->offset;
+    my $j = $self->file_processed + $i;
+
+    if ($j < $self->file_size) {
+        my $rechd = ord(substr($$buffer, $i, 1));
+        my $desc_i = -1;
+
+        if ($rechd & $rechd_mask_compressed_timestamp_header) {
+            $desc_i = ($rechd & $rechd_mask_cth_local_message_type) >> $rechd_offset_cth_local_message_type;
+        }
+        elsif ($rechd & $rechd_mask_definition_message) {
+            $self->fetch_definition_message;
+        } else {
+            $desc_i = $rechd & $rechd_mask_local_message_type;
+        }
+
+        if ($desc_i < 0) {
+            1;
+        } else {
+            my $desc = $self->data_message_descriptor->[$desc_i];
+
+            if (ref $desc eq 'HASH') {
+                $self->fetch_data_message($desc);
+            } else {
+                $self->error(sprintf("%d at %ld: not defined", $rechd, $j));
+            }
+        }
+    }
+    elsif (!$self->maybe_chained && $j > $self->file_size) {
+        $self->trailing_garbages($self->trailing_garbages + length($$buffer) - $i);
+        $self->offset(length($$buffer));
+        1;
+    } else {
+        $self->crc_calc(length($$buffer)) if !defined $self->crc;
+
+        my ($crc_expected, $k);
+
+        for ($crc_expected = 0, $k = $crc_octets ; $k > 0 ;) {
+            $crc_expected = ($crc_expected << 8) + ord(substr($$buffer, $i + --$k, 1));
+        }
+
+        $self->crc_expected($crc_expected);
+        $self->offset($i + $crc_octets);
+        $self->end_of_chunk(1);
+        !$self->maybe_chained;
+    }
+}
+
+sub error_callback {            # consider making internal (_error_callback)
+    my $self = shift;
+    if (@_) {
+        if (&safe_isa($_[0], 'CODE')) {
+            $self->{error_callback_argv} = [@_[1 .. $#_]];
+            $self->{error_callback} = $_[0];
+        } else {
+            undef;
+        }
+    } else {
+        $self->{error_callback};
+    }
+}
+
+=over 4
+
+=item error()
+
+returns an error message recorded by a method.
+
+=back
+
+=cut
+
+sub error {
+    my $self = shift;
+    if (@_) {
+        my ($p, $fn, $l, $subr, $fit);
+
+        (undef, $fn, $l) = caller(0);
+        ($p, undef, undef, $subr) = caller(1);
+        $fit = $self->file;
+        $fit .= ': ' if $fit ne '';
+
+        $self->{error} = "${p}::$subr\#$l\@$fn: $fit$_[0]";
+
+        if (&safe_isa($self->{error_callback}, 'CODE')) {
+            my $argv = &safe_isa($self->{error_callback_argv}, 'ARRAY') ? $self->{error_callback_argv} : [];
+
+            $self->{error_callback}->($self, @$argv);
+        } else {
+            undef;
+        }
+    } else {
+        $self->{error};
+    }
+}
+
+=over 4
+
+=item crc()
+
+CRC-16 calculated from the contents of a .FIT file.
+
+=back
+
+=cut
+
+sub crc {
+    my $self = shift;
+    if (@_) {
+        $self->{crc} = $_[0];
+    } else {
+        $self->{crc};
+    }
+}
+
+sub crc_of_string {
+    my ($self, $crc, $p, $b, $n) = @_;
+    my $e = $b + $n;
+    while ($b < $e) {
+        $crc = ($crc >> 8) ^ $crc_table[($crc & (2 ** 8 - 1)) ^ ord(substr($$p, $b++, 1))];
+    }
+    $crc;
+}
+
+sub crc_calc {
+    my ($self, $m) = @_;
+    my $over = $self->file_read - $self->file_size;
+    $over = 0 if $over < 0;
+
+    if ($m > $over) {
+        my $buffer = $self->buffer;
+        $self->crc($self->crc_of_string($self->crc, $buffer, length($$buffer) - $m, $m - $over));
+    }
+}
+
+=over 4
+
+=item crc_expected()
+
+CRC-16 attached to the end of a .FIT file. Only available after all contents of the file has been read.
+
+=back
+
+=cut
+
+sub crc_expected {
+    my $self = shift;
+    if (@_) {
+        $self->{crc_expected} = $_[0];
+    } else {
+        $self->{crc_expected};
+    }
+}
+
+=over 4
+
+=item trailing_garbages()
+
+number of octets after CRC-16, 0 usually.
+
+=back
+
+=cut
+
+sub trailing_garbages {
+    my $self = shift;
+    if (@_) {
+        $self->{trailing_garbages} = $_[0];
+    } else {
+        $self->{trailing_garbages};
+    }
+}
+
+sub numeric_date_time {
+    my $self = shift;
+    if (@_) {
+        $self->{numeric_date_time} = $_[0];
+    } else {
+        $self->{numeric_date_time};
+    }
+}
+
+sub date_string {
+    my ($self, $time) = @_;
+    my ($s, $mi, $h, $d, $mo, $y, $gmt) = $self->use_gmtime ? ((gmtime($time))[0 .. 5], 'Z') : (localtime($time))[0 .. 5];
+    sprintf('%04u-%02u-%02uT%02u:%02u:%02u%s', $y + 1900, $mo + 1, $d, $h, $mi, $s, $gmt);
+}
+
+sub named_type_value {
+    my ($self, $type_name, $val) = @_;
+    my $typedesc = $named_type{$type_name};
+
+    if (ref $typedesc ne 'HASH') {
+        $self->error("$type_name is not a named type");
+    }
+    elsif ($typedesc->{_mask}) {
+        if ($val !~ /^[-+]?\d+$/) {
+            my $num = 0;
+
+            for my $expr (split /,/, $val) {
+                $expr =~ s/^.*=//;
+
+                if ($expr =~ s/^0[xX]//) {
+                    $num |= hex($expr);
+                } else {
+                    $num |= $expr + 0;
+                }
+            }
+
+            $num;
+        } else {
+            my $mask = 0;
+            my @key;
+
+            for my $key (sort {$typedesc->{$b} <=> $typedesc->{$a}} grep {/^[A-Za-z]/} keys %$typedesc) {
+                push @key, $key . '=' . ($val & $typedesc->{$key});
+                $mask |= $typedesc->{$key};
+            }
+
+            my $rest = $val & ~$mask & ((1 << ($size[$typedesc->{_base_type}] * 8)) - 1);
+
+            if ($rest) {
+                my $width = $size[$typedesc->{_base_type}] * 2;
+
+                join(',', @key, sprintf("0x%0${width}X", $rest));
+            }
+            elsif (@key) {
+                join(',', @key);
+            } else {
+                0;
+            }
+        }
+    }
+    elsif ($type_name eq 'date_time') {
+        if ($val !~ /^[-+]?\d+$/) {
+            my ($y, $mo, $d, $h, $mi, $s, $gmt) = $val =~ /(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)([zZ]?)/;
+
+            ($gmt ne '' ? timegm($s, $mi, $h, $d, $mo - 1, $y - 1900) : timelocal($s, $mi, $h, $d, $mo - 1, $y - 1900)) + $typedesc->{_offset};
+        }
+        elsif ($val >= $typedesc->{_min} && $val != $invalid[$typedesc->{_base_type}]) {
+            if ($self->numeric_date_time) {
+                $val - $typedesc->{_offset};
+            } else {
+                $self->date_string($val - $typedesc->{_offset});
+            }
+        } else {
+            undef;
+        }
+    } else {
+        $typedesc->{$val};
+    }
+}
+
 sub data_message_descriptor {
     my $self = shift;
 
     if (@_) {
         $self->{data_message_descriptor} = $_[0];
-    }
-    else {
+    } else {
         $self->{data_message_descriptor} = [] if ref $self->{data_message_descriptor} ne 'ARRAY';
         $self->{data_message_descriptor};
     }
@@ -7436,6 +7397,16 @@ sub data_message_descriptor {
 sub data_message_callback {
     $_[0]->{data_message_callback};
 }
+
+=over 4
+
+=item data_message_callback_by_num(I<message number>, I<callback function>[, I<callback data>, ...])
+
+register a function I<callback function> which is called when a data message with the messag number I<message number> is fetched.
+
+=back
+
+=cut
 
 my $msgnum_anon = $invalid[FIT_UINT16];
 my $msgname_anon = '';
@@ -7450,12 +7421,10 @@ sub data_message_callback_by_num {
         if (@_) {
             if (ref $_[0] eq 'CODE') {
                 $cbmap->{$msgname_anon} = $cbmap->{$msgnum_anon} = [@_];
-            }
-            else {
+            } else {
                 $self->error('not a CODE');
             }
-        }
-        else {
+        } else {
             my %res;
             foreach $num (keys %msgtype_by_num) {
                 my $cb = $cbmap->{$num};
@@ -7472,16 +7441,24 @@ sub data_message_callback_by_num {
             $cbmap->{$num} = [@_];
             $msgtype->{_name} ne '' and $cbmap->{$msgtype->{_name}} = $cbmap->{$num};
             $cbmap->{$num};
-        }
-        else {
+        } else {
             $self->error('not a CODE');
         }
-    }
-    else {
+    } else {
         my $cb = $cbmap->{$num};
         ref $cb eq 'ARRAY' ? [@$cb] : [];
     }
 }
+
+=over 4
+
+=item data_message_callback_by_name(I<message name>, I<callback function>[, I<callback data>, ...])
+
+register a function I<callback function> which is called when a data message with the name I<message name> is fetched.
+
+=back
+
+=cut
 
 sub data_message_callback_by_name {
     my $self = shift;
@@ -7493,12 +7470,10 @@ sub data_message_callback_by_name {
         if (@_) {
             if (ref $_[0] eq 'CODE') {
                 $cbmap->{$msgname_anon} = $cbmap->{$msgnum_anon} = [@_];
-            }
-            else {
+            } else {
                 $self->error('not a CODE');
             }
-        }
-        else {
+        } else {
             my %res;
             foreach $name (keys %msgtype_by_name) {
                 my $cb = $cbmap->{$name};
@@ -7513,12 +7488,10 @@ sub data_message_callback_by_name {
     elsif (@_) {
         if (ref $_[0] eq 'CODE') {
             $cbmap->{$msgtype->{_number}} = $cbmap->{$name} = [@_];
-        }
-        else {
+        } else {
             $self->error('not a CODE');
         }
-    }
-    else {
+    } else {
         my $cb = $cbmap->{$name};
         ref $cb eq 'ARRAY' ? [@$cb] : [];
     }
@@ -7551,8 +7524,7 @@ sub syscallback_devdata_id {
     if ($emsg ne '') {
         if ($warn) {
             $self->error("suspicious developer data id message ($emsg)");
-        }
-        else {
+        } else {
             $self->error("broken developer data id message ($emsg)");
             return undef;
         }
@@ -7567,8 +7539,7 @@ sub syscallback_devdata_id {
     my $id;
     if ($T_id == FIT_UINT8) {
         $id = pack('C*', @$v[$i_id .. ($i_id + $c_id - 1)]);
-    }
-    else {
+    } else {
         $id = $v->[$i_id];
     }
 
@@ -7609,16 +7580,14 @@ sub syscallback_devdata_field_desc {
     elsif ($T_field_name != FIT_STRING || $c_field_name <= 0) {
         $emsg = "field_name is not a non-empty string";
         $warn = 1;
-    }
-    else {
+    } else {
         $o_name = $self->string_value($v, $i_field_name, $c_field_name);
     }
 
     if ($emsg ne '') {
         if ($warn) {
             $self->error("suspicious field description message ($emsg)");
-        }
-        else {
+        } else {
             $self->error("broken field description message ($emsg)");
             return undef;
         }
@@ -7692,9 +7661,7 @@ sub syscallback_devdata_field_desc {
         '_type' => $base_type,
         );
 
-    my $i_aname;
-
-    foreach $i_aname (grep {/^i_/} keys %$desc) {
+    for my $i_aname (grep {/^i_/} keys %$desc) {
         if ($i_aname !~ /^i_(developer_data_index|field_definition_number|fit_base_type_id|field_name)$/) {
             my $i = $desc->{$i_aname};
             my $aname = $i_aname;
@@ -7729,15 +7696,13 @@ sub add_endian_converter {
         }
         elsif ($size[$type] == 4) {
             ($p, $unp) = (qw(N V));
-        }
-        else {
+        } else {
             ($p, $unp, $n) = (qw(N V), 2);
         }
 
         push @$cvt, $p . $n, $unp . $n, $i_string, $size[$type], $c;
         1;
-    }
-    else {
+    } else {
         0;
     }
 }
@@ -7852,20 +7817,17 @@ sub fetch_definition_message {
 
                 if (ref $fdesc_by_num eq 'HASH') {
                     $fdesc = $fdesc_by_num->{$fnum};
-                }
-                else {
+                } else {
                     push @emsg, "No field description message for developer data with index $index";
                 }
-            }
-            else {
+            } else {
                 push @emsg, "No developer data id with index $index";
             }
 
             if (ref $fdesc eq 'HASH') {
                 %attr = %$fdesc;
                 ($type, $name) = @attr{qw(_type _name)};
-            }
-            else {
+            } else {
                 push @emsg, "No field with number $fnum for developer data with index $index";
                 $type = FIT_UINT8;
             }
@@ -7911,49 +7873,6 @@ sub fetch_definition_message {
     1;
 }
 
-sub cat_definition_message {
-    my ($self, $desc, $p) = @_;
-    my $drop_devdata = $self->drop_developer_data;
-
-    if (!defined $p) {
-        my $bin = '';
-        $p = \$bin;
-    }
-
-    if (!$drop_devdata || ($desc->{message_name} ne 'developer_data_id' && $desc->{message_name} ne 'field_description')) {
-        my @i_name = sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_[A-Za-z]/} keys %$desc;
-        my @devdata_i_name = $drop_devdata ? () : sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_\d+_/} keys %$desc;
-        my $mask = @devdata_i_name ? $rechd_mask_devdata_message : 0;
-        my ($endian, $msgnum) = @{$desc}{qw(endian message_number)};
-
-        $msgnum = unpack('n', pack('v', $msgnum)) if $endian != $my_endian;
-        $$p .= pack($defmsg_min_template, $desc->{local_message_type} | $rechd_mask_definition_message | $mask, 0, $endian, $msgnum, $#i_name + 1);
-
-        while (@i_name) {
-            my $name = shift @i_name;
-            $name =~ s/^i_//;
-
-            my $size = $desc->{'s_' . $name};
-
-            $$p .= pack($deffld_template, $desc->{'N_' . $name}, $desc->{'c_' . $name} * $size, $desc->{'T_' . $name} | ($size > 1 ? $deffld_mask_endian_p : 0));
-        }
-
-        if (@devdata_i_name) {
-            $$p .= pack($devdata_min_template, $#devdata_i_name + 1);
-
-            while (@devdata_i_name) {
-                my $name = shift @devdata_i_name;
-                $name =~ s/^i_//;
-
-                my $size = $desc->{'s_' . $name};
-
-                $$p .= pack($devdata_deffld_template, $desc->{'N_' . $name}, $desc->{'c_' . $name} * $size, $name =~ /^(\d+)_/);
-            }
-        }
-    }
-    $p;
-}
-
 sub endian_convert {
     my ($self, $cvt, $buffer, $i) = @_;
     my $j;
@@ -7977,8 +7896,7 @@ sub last_timestamp {
     my $self = shift;
     if (@_) {
         $self->{last_timestamp} = $_[0];
-    }
-    else {
+    } else {
         $self->{last_timestamp};
     }
 }
@@ -8021,8 +7939,7 @@ sub fetch_data_message {
     if (ref $cb eq 'ARRAY') {
         $v[0] & $rechd_mask_compressed_timestamp_header and push @v, $self->last_timestamp + ($v[0] & $rechd_mask_cth_timestamp);
         $cb->[0]->($self, $desc, \@v, @$cb[1 .. $#$cb]);
-    }
-    else {
+    } else {
         1;
     }
 }
@@ -8033,8 +7950,7 @@ sub pack_data_message {
 
     if ($drop_devdata && ($desc->{message_name} eq 'developer_data_id' || $desc->{message_name} eq 'field_description')) {
         '';
-    }
-    else {
+    } else {
         my $rv = $v;
 
         if (ref $desc->{packfilter_index} eq 'ARRAY') {
@@ -8058,16 +7974,24 @@ sub pack_data_message {
         if ($drop_devdata) {
             if ($desc->{devdata_first} > 0) {
                 pack($desc->{template_without_devdata}, @$rv[0 .. ($desc->{devdata_first} - 1)]);
-            }
-            else {
+            } else {
                 '';
             }
-        }
-        else {
+        } else {
             pack($desc->{template}, @$rv);
         }
     }
 }
+
+=over 4
+
+=item switched(I<data message descriptor>, I<array of values>, I<data type table>)
+
+returns real data type attributes for a C's union like field.
+
+=back
+
+=cut
 
 sub switched {
     my ($self, $desc, $v, $sw) = @_;
@@ -8075,12 +7999,11 @@ sub switched {
 
     if (ref $sw->{_by} eq 'ARRAY') {
         $keyv = $sw->{_by};
-    }
-    else {
+    } else {
         $keyv = [$sw->{_by}];
     }
 
-    foreach $key (@$keyv) {
+    for $key (@$keyv) {
         my $i_name = 'i_' . $key;
         my $val;
 
@@ -8102,6 +8025,16 @@ sub switched {
     $attr;
 }
 
+=over 4
+
+=item string_value(I<array of values>, I<offset in the array>, I<counts>)
+
+converts an array of character codes to a Perl string.
+
+=back
+
+=cut
+
 sub string_value {
     my ($self, $v, $i, $n) = @_;
     my $j;
@@ -8110,28 +8043,6 @@ sub string_value {
         $v->[$i + $j] == 0 && last;
     }
     pack('C*', @{$v}[$i .. ($i + $j - 1)]);
-}
-
-sub unit_table {
-    my $self = shift;
-    my $unit = shift;
-
-    if (@_) {
-        $self->{unit_table}->{$unit} = $_[0];
-    }
-    else {
-        $self->{unit_table}->{$unit};
-    }
-}
-
-sub without_unit {
-    my $self = shift;
-    if (@_) {
-        $self->{without_unit} = $_[0];
-    }
-    else {
-        $self->{without_unit};
-    }
 }
 
 sub value_processed {
@@ -8162,27 +8073,23 @@ sub value_processed {
 
                 if ($self->without_unit) {
                     sprintf("%.${below_pt}f", $num);
-                }
-                else {
+                } else {
                     sprintf("%.${below_pt}f %s", $num, $unit);
                 }
             }
             elsif ($self->without_unit) {
                 $num;
-            }
-            else {
+            } else {
                 $num . " " . $unit;
             }
         }
         elsif (defined $scale and $scale > 0) {
             my $below_pt = int(log($scale + 9) / log(10));
             sprintf("%.${below_pt}f", $num);
-        }
-        else {
+        } else {
             $num;
         }
-    }
-    else {
+    } else {
         $num;
     }
 }
@@ -8212,19 +8119,31 @@ sub value_unprocessed {
         $num += $offset if $offset;
         $num *= $scale if $scale > 0;
         $num;
-    }
-    else {
+    } else {
         $str;
     }
 }
+
+=over 4
+
+=item value_cooked(I<type name>, I<field attributes table>, I<invalid>, I<value>)
+
+converts I<value> to a (hopefully) human readable form.
+
+=item value_uncooked(I<type name>, I<field attributes table>, I<invalid>, I<value representation>)
+
+converts a human readable representation of a datum to an original form.
+
+=back
+
+=cut
 
 sub value_cooked {
     my ($self, $tname, $attr, $invalid, $val) = @_;
 
     if ($val == $invalid) {
         $val;
-    }
-    else {
+    } else {
         if (defined $tname) {
             my $vname = $self->named_type_value($tname, $val);
 
@@ -8233,8 +8152,7 @@ sub value_cooked {
 
         if (ref $attr eq 'HASH') {
             $self->value_processed($val, $attr);
-        }
-        else {
+        } else {
             $val;
         }
     }
@@ -8252,12 +8170,10 @@ sub value_uncooked {
 
         if (ref $attr eq 'HASH') {
             $self->value_unprocessed($val, $attr);
-        }
-        else {
+        } else {
             $val;
         }
-    }
-    else {
+    } else {
         $val;
     }
 }
@@ -8286,8 +8202,7 @@ sub drop_developer_data {
     my $self = shift;
     if (@_) {
         $self->{drop_developer_data} = $_[0];
-    }
-    else {
+    } else {
         $self->{drop_developer_data};
     }
 }
@@ -8313,99 +8228,18 @@ sub initialize {
     $self;
 }
 
+# undocumented (and not used internally)
 sub reset {
     my $self = shift;
     $self->clear_buffer;
 
     %$self = map {($_ => $self->{$_})} qw(error buffer FH data_message_callback unit_table
-                                          verbose cp_fit cp_fit_FH EOF use_gmtime numeric_date_time without_unit maybe_chained);
+                                          cp_fit cp_fit_FH EOF use_gmtime numeric_date_time without_unit maybe_chained);
 
     my $buffer = $self->buffer;
     $self->file_read(length($$buffer));
     $self->file_processed(0);
     $self;
-}
-
-sub open {
-    my $self = shift;
-    my $fn = $self->file;
-
-    if ($fn ne '') {
-        my $FH = $self->FH;
-
-        if ($FH->open("< $fn")) {
-            if (binmode $FH, ':raw') {
-                1;
-            }
-            else {
-                $self->error("binmode \$FH, ':raw': $!");
-            }
-        }
-        else {
-            $self->error("\$FH->open(\"< $fn\"): $!");
-        }
-    }
-    else {
-        $self->error('no file name given');
-    }
-}
-
-sub fetch {
-    my $self = shift;
-
-    $self->fill_buffer($crc_octets) || return undef;
-
-    my $buffer = $self->buffer;
-    my $i = $self->offset;
-    my $j = $self->file_processed + $i;
-
-    if ($j < $self->file_size) {
-        my $rechd = ord(substr($$buffer, $i, 1));
-        my $desc_i = -1;
-
-        if ($rechd & $rechd_mask_compressed_timestamp_header) {
-            $desc_i = ($rechd & $rechd_mask_cth_local_message_type) >> $rechd_offset_cth_local_message_type;
-        }
-        elsif ($rechd & $rechd_mask_definition_message) {
-            $self->fetch_definition_message;
-        }
-        else {
-            $desc_i = $rechd & $rechd_mask_local_message_type;
-        }
-
-        if ($desc_i < 0) {
-            1;
-        }
-        else {
-            my $desc = $self->data_message_descriptor->[$desc_i];
-
-            if (ref $desc eq 'HASH') {
-                $self->fetch_data_message($desc);
-            }
-            else {
-                $self->error(sprintf("%d at %ld: not defined", $rechd, $j));
-            }
-        }
-    }
-    elsif (!$self->maybe_chained && $j > $self->file_size) {
-        $self->trailing_garbages($self->trailing_garbages + length($$buffer) - $i);
-        $self->offset(length($$buffer));
-        1;
-    }
-    else {
-        $self->crc_calc(length($$buffer)) if !defined $self->crc;
-
-        my ($crc_expected, $k);
-
-        for ($crc_expected = 0, $k = $crc_octets ; $k > 0 ;) {
-            $crc_expected = ($crc_expected << 8) + ord(substr($$buffer, $i + --$k, 1));
-        }
-
-        $self->crc_expected($crc_expected);
-        $self->offset($i + $crc_octets);
-        $self->end_of_chunk(1);
-        !$self->maybe_chained;
-    }
 }
 
 my @type_name = ();
@@ -8438,9 +8272,7 @@ sub print_all_fields {
     $FH=\*STDOUT if !defined $FH;
     $FH->print($indent, 'compressed_timestamp: ', $self->named_type_value('date_time', $v->[$#$v]), "\n") if $desc->{array_length} == $#$v;
 
-    my $i_name;
-
-    foreach $i_name (sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_/} keys %$desc) {
+    for my $i_name (sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_/} keys %$desc) {
         my $name = $i_name;
         $name =~ s/^i_//;
 
@@ -8478,8 +8310,7 @@ sub print_all_fields {
 
             if ($type == FIT_STRING) {
                 $FH->print("\"", $self->string_value($v, $i, $c), "\"\n");
-            }
-            else {
+            } else {
                 $FH->print('{') if $c > 1;
 
                 my $pval = $self->value_cooked($tname, $attr, $invalid, $v->[$i]);
@@ -8516,8 +8347,7 @@ sub print_all_json {
         $out = $out + 1;
     }
 
-    my $i_name;
-    foreach $i_name (sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_/} keys %$desc) {
+    for my $i_name (sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_/} keys %$desc) {
         my $name = $i_name;
         $name =~ s/^i_//;
 
@@ -8553,16 +8383,14 @@ sub print_all_json {
 
             if ($type == FIT_STRING) {
                 $FH->print("\"", $self->string_value($v, $i, $c), "\"");
-            }
-            else {
+            } else {
                 $FH->print('[') if $c > 1;
 
                 my $pval = $self->value_cooked($tname, $attr, $invalid, $v->[$i]);
 
                 if (looks_like_number($pval)) {
                     $FH->print($pval);
-                }
-                else {
+                } else {
                     $FH->print("\"$pval\"");
                 }
 
@@ -8574,8 +8402,7 @@ sub print_all_json {
                         $FH->print(', ');
                         if (looks_like_number($pval)) {
                             $FH->print($pval);
-                        }
-                        else {
+                        } else {
                             $FH->print("\"$pval\"");
                         }
                     }
@@ -8589,6 +8416,77 @@ sub print_all_json {
     1;
 }
 
+=over 4
+
+=item use_gmtime(I<boolean>)
+
+sets the flag which of GMT or local timezone is used for C<date_time> type value conversion.
+
+=back
+
+=cut
+
+my $use_gmtime = 0;
+
+sub use_gmtime {
+    my $self = shift;
+
+    if (@_) {
+        if (ref $self eq '') {
+            $use_gmtime = $_[0];
+        } else {
+            $self->{use_gmtime} = $_[0];
+        }
+    }
+    elsif (ref $self eq '') {
+        $use_gmtime;
+    } else {
+        $self->{use_gmtime};
+    }
+}
+
+=over 4
+
+=item unit_table(I<unit> => I<unit conversion table>)
+
+sets I<unit conversion table> for I<unit>.
+
+=back
+
+=cut
+
+sub unit_table {
+    my $self = shift;
+    my $unit = shift;
+
+    if (@_) {
+        $self->{unit_table}->{$unit} = $_[0];
+    } else {
+        $self->{unit_table}->{$unit};
+    }
+}
+
+sub without_unit {
+    my $self = shift;
+    if (@_) {
+        $self->{without_unit} = $_[0];
+    } else {
+        $self->{without_unit};
+    }
+}
+
+=over 4
+
+=item semicircles_to_degree(I<boolean>)
+
+=item mps_to_kph(I<boolean>)
+
+wrapper methods of C<unit_table()> method.
+
+=back
+
+=cut
+
 sub semicircles_to_degree {
     my ($self, $on) = @_;
     $self->unit_table('semicircles' => $on ? +{'unit' => 'deg', 'scale' => 2 ** 31 / 180} : undef);
@@ -8598,6 +8496,16 @@ sub mps_to_kph {
     my ($self, $on) = @_;
     $self->unit_table('m/s' => $on ? +{'unit' => 'km/h', 'scale' => 1 / 3.6} : undef);
 }
+
+=over 4
+
+=item close()
+
+closes opened file handles.
+
+=back
+
+=cut
 
 sub close {
     my $self = shift;
@@ -8751,7 +8659,7 @@ Nothing in particular so far.
 
 =head1 SEE ALSO
 
-L<Geo::TCX>
+L<fit2tcx.pl>, L<fitdump.pl>, L<locations2gpx.pl>, L<Geo::TCX>, L<Geo::Gpx>.
 
 =head1 BUGS AND LIMITATIONS
 
