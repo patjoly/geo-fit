@@ -6745,6 +6745,9 @@ returns a string representing the .FIT protocol version on which this class base
 
 =cut
 
+my $profile_current  = '21.107';
+my $protocol_current = '2.3';       # is there such a thing as current protocal?
+
 my $protocol_version_major_shift = 4;
 my $protocol_version_minor_mask  = (1 << $protocol_version_major_shift) - 1;
 my $protocol_version_header_crc_started = _protocol_version_from_string("1.0");
@@ -6758,7 +6761,10 @@ sub _protocol_version_from_string {
 }
 
 sub protocol_version {
-    my $version = _protocol_version_from_string("2.3");
+    my $self = shift;
+    my $version;
+    if (@_) { $version = shift }
+    else {    $version = _protocol_version_from_string($protocol_current) }
     return ($version >> $protocol_version_major_shift, $version & $protocol_version_minor_mask) if wantarray;
     return $version
 }
@@ -6774,17 +6780,19 @@ sub _profile_version_from_string {
     return $major * $profile_version_scale + $minor % $profile_version_scale
 }
 
-# odd that it's a method as we don't capture self, it's just that we want to provide easy access to the profile #
 sub profile_version {
-    my $version = _profile_version_from_string("21.107");
+    my $self = shift;
+    my $version;
+    if (@_) { $version = shift }
+    else {    $version = _profile_version_from_string($profile_current) }
     return (int($version / $profile_version_scale), $version % $profile_version_scale) if wantarray;
     return $version
 }
 
 sub protocol_version_string { sprintf '%u.%u',   (protocol_version) }
 sub profile_version_string  { sprintf '%u.%03u', (profile_version)  }
-sub protocol_version_major  { shift->protocol_version };
-sub profile_version_major   { shift->profile_version  };
+sub protocol_version_major  { protocol_version(@_) };
+sub profile_version_major   { profile_version( @_) };
 
 # CRC calculation routine taken from
 #   Haruhiko Okumura, C gengo ni yoru algorithm dai jiten (1st ed.), GijutsuHyouronsha 1991.
