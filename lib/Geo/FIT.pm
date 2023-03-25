@@ -34,7 +34,7 @@ use Carp qw/ croak /;
 use FileHandle;
 use POSIX qw(BUFSIZ);
 use Time::Local;
-use Scalar::Util qw(looks_like_number);
+use Scalar::Util qw(blessed looks_like_number);
 
 my $uint64_invalid;
 BEGIN {
@@ -6746,12 +6746,12 @@ returns a string representing the .FIT protocol version on which this class base
 =cut
 
 my $profile_current  = '21.107';
-my $protocol_current = '2.3';       # is there such a thing as current protocal?
+my $protocol_current = '2.3';       # is there such a thing as current protocol?
 
 my $protocol_version_major_shift = 4;
 my $protocol_version_minor_mask  = (1 << $protocol_version_major_shift) - 1;
 my $protocol_version_header_crc_started = _protocol_version_from_string("1.0");
-my $profile_version_scale = 1000;
+my $profile_version_scale = 100;
 
 sub _protocol_version_from_string {
     my $s = shift;
@@ -6770,29 +6770,49 @@ sub protocol_version {
 }
 
 sub _profile_version_from_string {
-    my $s = shift;
-    my ($major, $minor) = split /\./, $s, 2;
-    if (wantarray) {
-        croak "There is a bug when called in list context, this should be resolved soon";
-        # $profile_version_minor_mask has not been declared nor is it used anywhere else
-        # ($major + 0, $minor & $profile_version_minor_mask);
-    }
+    my $str = shift;
+    croak '_profile_version_from_string() expects a string as argument' unless $str;
+    my ($major, $minor) = split /\./, $str, 2;
+    if ($minor >= 100) { $major += 1 }      # kludge to deal with three-digit minor versions
     return $major * $profile_version_scale + $minor % $profile_version_scale
 }
 
 sub profile_version {
     my $self = shift;
     my $version;
-    if (@_) { $version = shift }
-    else {    $version = _profile_version_from_string($profile_current) }
-    return (int($version / $profile_version_scale), $version % $profile_version_scale) if wantarray;
+    if (@_) {
+        $version = shift;
+        $version = _profile_version_from_string($version) if $version =~ /\./
+    } else {    $version = _profile_version_from_string($profile_current) }
+
+    if (wantarray) {
+        my $major = int($version / $profile_version_scale);
+        my $minor = $version % $profile_version_scale;
+        if ($version >= 2200) {             # kludge to deal with three-digit minor versions
+            $major -= 1;
+            $minor += 100
+        }
+        return ($major, $minor)
+    }
     return $version
 }
 
-sub protocol_version_string { sprintf '%u.%u',   (protocol_version) }
-sub profile_version_string  { sprintf '%u.%03u', (profile_version)  }
-sub protocol_version_major  { protocol_version(@_) };
+sub profile_version_string  {
+    my $self = shift;
+    my @version;
+    if (blessed $self) {
+        croak 'fetch_header() has not been called yet to obtain the version from the header, call fetch_header() first' unless defined $self->{profile_version};
+        croak 'object method expects no arguments' if @_;
+        @version = profile_version(undef, $self->{profile_version} )
+    } else {
+        @version = profile_version(undef, @_)
+    }
+    return sprintf '%u.%03u', @version
+}
+
 sub profile_version_major   { profile_version( @_) };
+sub protocol_version_string { sprintf '%u.%u',   ( protocol_version(@_) ) }
+sub protocol_version_major  { protocol_version(@_) };
 
 # CRC calculation routine taken from
 #   Haruhiko Okumura, C gengo ni yoru algorithm dai jiten (1st ed.), GijutsuHyouronsha 1991.
@@ -7116,6 +7136,7 @@ sub fetch_header {
                 $self->crc(0);
                 $self->crc_calc(length($$buffer));
             }
+            $self->{profile_version} = $prof_ver;
 
             ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated);
         }
@@ -8236,12 +8257,12 @@ sub initialize {
     $self;
 }
 
-# undocumented (and not used internally)
+# undocumented (used by fitdump.pl is chained files)
 sub reset {
     my $self = shift;
     $self->clear_buffer;
 
-    %$self = map {($_ => $self->{$_})} qw(error buffer FH data_message_callback unit_table
+    %$self = map {($_ => $self->{$_})} qw(error buffer FH data_message_callback unit_table profile_version
                                           cp_fit cp_fit_FH EOF use_gmtime numeric_date_time without_unit maybe_chained);
 
     my $buffer = $self->buffer;
@@ -8523,6 +8544,16 @@ sub close {
     $cp_fit_FH->close if &safe_isa($cp_fit_FH, 'FileHandle') && $cp_fit_FH->opened;
     $FH->close if $FH->opened;
 }
+
+=over 4
+
+=item profile_version_string()
+
+Returns a string representation of the profile version used by the device or application that created the FIT file opened in the instance.
+
+C<< fetch_header() >> must have been called at least once for this method to be able to return a value, will raise an exception otherwise.
+
+=back
 
 =head2 Constants
 
