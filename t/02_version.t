@@ -1,4 +1,4 @@
-# t/01_main.t - main testing file (for FIT.pm)
+# t/02_version.t - test the profile version functions/methods
 use strict;
 use warnings;
 
@@ -16,23 +16,23 @@ isa_ok($o, 'Geo::FIT');
 my @versions;
 @versions = qw( 21.72 21.94 21.107 );
 for my $version (@versions) {
-    
+
     # expected values
     my @expected_maj_min = split /\./, $version;
     my $expected_integer = join('', split /\./, $version);
-    my $expected_string  = sprintf '%u.%03u', @expected_maj_min; 
+    my $expected_string  = sprintf '%u.%03u', @expected_maj_min;
     $expected_integer = 2207 if $version eq '21.107';
     # ... gets tricky with 3-digit minor versions
     # ....we can generalize the above line but let's just do that for now:
 
     # function -- internal
-    
+
     my $integer = Geo::FIT::_profile_version_from_string( $version );
     is(	$integer, $expected_integer,                "   test _profile_version_from_string()");
     # NB: purpose of this function is to return an integer exactly as it would appear in a FIT file
 
     # profile_version() -- undocumented -- meant to accept both integer and string
-    
+
     # -- list context
     my @major_minor;
     @major_minor= Geo::FIT->profile_version( $integer );
@@ -48,7 +48,7 @@ for my $version (@versions) {
     is(	$returned_integer, $expected_integer,       "   test profile_version()");
 
     # profile_version_string()
-    
+
     my $returned_string = Geo::FIT->profile_version_string( $integer );
     is(	$returned_string, $expected_string,         "   test profile_version_string()");
 
@@ -61,15 +61,15 @@ for my $version (@versions) {
 
 my $version = '21.107';
 # ... update this one each time we update $profile_current in FIT.pm
-    
+
 # expected values
 my @expected_maj_min = split /\./, $version;
 my $expected_integer = join('', split /\./, $version);
-my $expected_string  = sprintf '%u.%03u', @expected_maj_min; 
+my $expected_string  = sprintf '%u.%03u', @expected_maj_min;
 $expected_integer = 2207 if $version eq '21.107';
 
 # profile_version() -- undocumented -- meant to accept both integer and string
-    
+
 # -- list context
 my @major_minor;
 @major_minor= Geo::FIT->profile_version();
@@ -81,7 +81,7 @@ $returned_integer = Geo::FIT->profile_version();
 is(	$returned_integer, $expected_integer,       "   test profile_version() -- w/o arguments");
 
 # profile_version_string()
-    
+
 my $returned_string = Geo::FIT->profile_version_string();
 is(	$returned_string, $expected_string,         "   test profile_version_string() -- w/o arguments");
 

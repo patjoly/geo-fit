@@ -7038,12 +7038,10 @@ sub end_of_chunk {
 sub fill_buffer {
     my ($self, $req) = @_;
     my $buffer = $self->buffer;
-    my $FH = $self->FH;
 
     while (length($$buffer) - $self->offset < $req) {
         $self->clear_buffer;
-
-        my $n = $FH->read($$buffer, BUFSIZ, length($$buffer));
+        my $n = $self->FH->read($$buffer, BUFSIZ, length($$buffer));
 
         if ($n > 0) {
             $self->file_read($self->file_read + $n);
@@ -7062,11 +7060,10 @@ sub fill_buffer {
             } else {
                 $self->error("read(FH): $!");
             }
-
-            return undef;
+            return undef
         }
     }
-    1;
+    return 1
 }
 
 my $header_template = 'C C v V V';
@@ -7155,39 +7152,36 @@ reads a message in the .FIT file, and returns C<1> on success, or C<undef> on fa
 
 sub fetch {
     my $self = shift;
-
-    $self->fill_buffer($crc_octets) || return undef;
+    $self->fill_buffer($crc_octets) or return undef;
 
     my $buffer = $self->buffer;
     my $i = $self->offset;
     my $j = $self->file_processed + $i;
 
     if ($j < $self->file_size) {
-        my $rechd = ord(substr($$buffer, $i, 1));
-        my $desc_i = -1;
+        my $record_header = ord(substr($$buffer, $i, 1));
+        my $local_msg_type = -1;
 
-        if ($rechd & $rechd_mask_compressed_timestamp_header) {
-            $desc_i = ($rechd & $rechd_mask_cth_local_message_type) >> $rechd_offset_cth_local_message_type;
-        }
-        elsif ($rechd & $rechd_mask_definition_message) {
-            $self->fetch_definition_message;
+        if ($record_header & $rechd_mask_compressed_timestamp_header) {
+            $local_msg_type = ($record_header & $rechd_mask_cth_local_message_type) >> $rechd_offset_cth_local_message_type
+        } elsif ($record_header & $rechd_mask_definition_message) {
+            $self->fetch_definition_message
         } else {
-            $desc_i = $rechd & $rechd_mask_local_message_type;
+            $local_msg_type = $record_header & $rechd_mask_local_message_type
         }
 
-        if ($desc_i < 0) {
+        if ($local_msg_type < 0) {
             1;
         } else {
-            my $desc = $self->data_message_descriptor->[$desc_i];
+            my $desc = $self->data_message_descriptor->[$local_msg_type];
 
             if (ref $desc eq 'HASH') {
                 $self->fetch_data_message($desc);
             } else {
-                $self->error(sprintf("%d at %ld: not defined", $rechd, $j));
+                $self->error(sprintf("%d at %ld: not defined", $record_header, $j));
             }
         }
-    }
-    elsif (!$self->maybe_chained && $j > $self->file_size) {
+    } elsif (!$self->maybe_chained && $j > $self->file_size) {
         $self->trailing_garbages($self->trailing_garbages + length($$buffer) - $i);
         $self->offset(length($$buffer));
         1;
@@ -7353,8 +7347,7 @@ sub named_type_value {
 
     if (ref $typedesc ne 'HASH') {
         $self->error("$type_name is not a named type");
-    }
-    elsif ($typedesc->{_mask}) {
+    } elsif ($typedesc->{_mask}) {
         if ($val !~ /^[-+]?\d+$/) {
             my $num = 0;
 
@@ -7384,21 +7377,18 @@ sub named_type_value {
                 my $width = $size[$typedesc->{_base_type}] * 2;
 
                 join(',', @key, sprintf("0x%0${width}X", $rest));
-            }
-            elsif (@key) {
+            } elsif (@key) {
                 join(',', @key);
             } else {
                 0;
             }
         }
-    }
-    elsif ($type_name eq 'date_time') {
+    } elsif ($type_name eq 'date_time') {
         if ($val !~ /^[-+]?\d+$/) {
             my ($y, $mo, $d, $h, $mi, $s, $gmt) = $val =~ /(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)([zZ]?)/;
 
             ($gmt ne '' ? timegm($s, $mi, $h, $d, $mo - 1, $y - 1900) : timelocal($s, $mi, $h, $d, $mo - 1, $y - 1900)) + $typedesc->{_offset};
-        }
-        elsif ($val >= $typedesc->{_min} && $val != $invalid[$typedesc->{_base_type}]) {
+        } elsif ($val >= $typedesc->{_min} && $val != $invalid[$typedesc->{_base_type}]) {
             if ($self->numeric_date_time) {
                 $val - $typedesc->{_offset};
             } else {
@@ -7461,11 +7451,9 @@ sub data_message_callback_by_num {
             }
             \%res;
         }
-    }
-    elsif (!defined($msgtype = $msgtype_by_num{$num})) {
+    } elsif (!defined($msgtype = $msgtype_by_num{$num})) {
         $self->error("$num is not a message type number");
-    }
-    elsif (@_) {
+    } elsif (@_) {
         if (ref $_[0] eq 'CODE') {
             $cbmap->{$num} = [@_];
             $msgtype->{_name} ne '' and $cbmap->{$msgtype->{_name}} = $cbmap->{$num};
@@ -7510,11 +7498,9 @@ sub data_message_callback_by_name {
             }
             \%res;
         }
-    }
-    elsif (!defined($msgtype = $msgtype_by_name{$name})) {
+    } elsif (!defined($msgtype = $msgtype_by_name{$name})) {
         $self->error("$name is not a message type name");
-    }
-    elsif (@_) {
+    } elsif (@_) {
         if (ref $_[0] eq 'CODE') {
             $cbmap->{$msgtype->{_number}} = $cbmap->{$name} = [@_];
         } else {
@@ -7540,13 +7526,11 @@ sub syscallback_devdata_id {
     if (!defined $i_id) {
         $emsg = "no application_id";
         $warn = 1;
-    }
-    elsif ($T_id != FIT_UINT8 && $T_id != FIT_BYTE) {
+    } elsif ($T_id != FIT_UINT8 && $T_id != FIT_BYTE) {
         croak "There is a bug here, this should be resolved soon";
         # $type_name has not been declared in this scope need to figure out what it should be
         # $emsg = "base type of application_id is $type_name [$T_id] ($T_id)";
-    }
-    elsif (!defined $i_index) {
+    } elsif (!defined $i_index) {
         $emsg = "no developer_data_index";
     }
 
@@ -7590,23 +7574,18 @@ sub syscallback_devdata_field_desc {
 
     if (!defined $i_index) {
         $emsg = 'no developer_data_index';
-    }
-    elsif (!defined $i_field_num) {
+    } elsif (!defined $i_field_num) {
         $emsg = 'no field_num';
-    }
-    elsif (!defined $i_base_type_id) {
+    } elsif (!defined $i_base_type_id) {
         $emsg = 'no base_type_id';
-    }
-    elsif ($T_base_type_id != FIT_UINT8) {
+    } elsif ($T_base_type_id != FIT_UINT8) {
         croak "There is a bug here, this should be resolved soon";
         # $type_name has not been declared in this scope need to figure out what it should be
         # $emsg = "base type of base_type_id is $type_name [$T_base_type_id] ($T_base_type_id)";
-    }
-    elsif (!defined $i_field_name) {
+    } elsif (!defined $i_field_name) {
         $emsg = 'no field_name';
         $warn = 1;
-    }
-    elsif ($T_field_name != FIT_STRING || $c_field_name <= 0) {
+    } elsif ($T_field_name != FIT_STRING || $c_field_name <= 0) {
         $emsg = "field_name is not a non-empty string";
         $warn = 1;
     } else {
@@ -7703,8 +7682,7 @@ sub syscallback_devdata_field_desc {
 
             if ($desc->{$T_aname} == FIT_STRING) {
                 $fdesc{$aname} = $self->string_value($v, $i, $desc->{$c_aname});
-            }
-            elsif ($v->[$i] != $desc->{$I_aname}) {
+            } elsif ($v->[$i] != $desc->{$I_aname}) {
                 $fdesc{$aname} = $v->[$i];
             }
         }
@@ -7722,8 +7700,7 @@ sub add_endian_converter {
 
         if ($size[$type] == 2) {
             ($p, $unp) = (qw(n v));
-        }
-        elsif ($size[$type] == 4) {
+        } elsif ($size[$type] == 4) {
             ($p, $unp) = (qw(N V));
         } else {
             ($p, $unp, $n) = (qw(N V), 2);
@@ -7743,7 +7720,7 @@ sub fetch_definition_message {
 
     my $buffer = $self->buffer;
     my $i = $self->offset;
-    my ($rechd, $reserved, $endian, $msgnum, $nfields) = unpack($defmsg_min_template, substr($$buffer, $i, $defmsg_min_length));
+    my ($record_header, $reserved, $endian, $msgnum, $nfields) = unpack($defmsg_min_template, substr($$buffer, $i, $defmsg_min_length));
 
     $endian = $endian ? 1 : 0;
     $self->offset($i + $defmsg_min_length);
@@ -7759,7 +7736,7 @@ sub fetch_definition_message {
     my $e = $i + $len;
     my ($cb, %desc, $i_array, $i_array_t, $i_string, @cvt, @pi);
 
-    $desc{local_message_type} = $rechd & $rechd_mask_local_message_type;
+    $desc{local_message_type} = $record_header & $rechd_mask_local_message_type;
     $desc{message_number} = $msgnum;
     $desc{message_name} = $msgtype->{_name} if ref $msgtype eq 'HASH' && exists $msgtype->{_name};
     $cb = $cbmap->{$msgnum} if ref $cbmap->{$msgnum} eq 'ARRAY';
@@ -7819,7 +7796,7 @@ sub fetch_definition_message {
     $desc{devdata_first} = $i_array;
     $desc{devdata_nfields} = 0;
 
-    if ($rechd & $rechd_mask_devdata_message) {
+    if ($record_header & $rechd_mask_devdata_message) {
         $self->offset($e);
         $self->fill_buffer($devdata_min_length) || return undef;
         $i = $self->offset;
@@ -7899,7 +7876,7 @@ sub fetch_definition_message {
     $desc{message_length} = $i_string;
     $desc{array_length} = $i_array;
     $self->offset($e);
-    1;
+    return 1
 }
 
 sub endian_convert {
@@ -8105,14 +8082,12 @@ sub value_processed {
                 } else {
                     sprintf("%.${below_pt}f %s", $num, $unit);
                 }
-            }
-            elsif ($self->without_unit) {
+            } elsif ($self->without_unit) {
                 $num;
             } else {
                 $num . " " . $unit;
             }
-        }
-        elsif (defined $scale and $scale > 0) {
+        } elsif (defined $scale and $scale > 0) {
             my $below_pt = int(log($scale + 9) / log(10));
             sprintf("%.${below_pt}f", $num);
         } else {
@@ -8466,8 +8441,7 @@ sub use_gmtime {
         } else {
             $self->{use_gmtime} = $_[0];
         }
-    }
-    elsif (ref $self eq '') {
+    } elsif (ref $self eq '') {
         $use_gmtime;
     } else {
         $self->{use_gmtime};
