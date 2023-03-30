@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use Carp;
 
 our $VERSION = '1.06';
 
@@ -8,31 +9,56 @@ our $VERSION = '1.06';
 
 =head1 NAME
 
-fitdump.pl - script to print the contents of Garmin FIT files to standard output
+fitdump.pl - script to print the contents of Garmin FIT files to standard output or a file
 
 =head1 SYNOPSIS
 
-    fitdump.pl -show_version=1
-    fitdump.pl [ -semicircles_to_deg=(0|1) -mps_to_kph=(0|1) -use_gmtime=(0|1) -maybe_chained=(0|1) ] [ $FIT_file ... ]
+    fitdump.pl --version
+    fitdump.pl --help
+    fitdump.pl $fit_file [ --mps_to_kph=$boole --semicircles_to_deg=$boole --use_gmtime=$boole --maybe_chained=$boole --force ] [ $output_file ]
 
 =head1 DESCRIPTION
 
-C<fitdump.pl> reads the contents of the Garmin FIT files given on command line (or standard input if no file is specified) and prints them in (hopefully) human readable form.
+C<fitdump.pl> reads the contents of the Garmin FIT files specified on command line and prints them on standard output or in I<$output_file> if provided.
 
 =cut
 
 use Geo::FIT;
+use Getopt::Long;
 
-my ($semicircles_to_deg, $mps_to_kph, $use_gmtime, $show_version, $maybe_chained);
-$semicircles_to_deg = 1 if !defined $semicircles_to_deg;
-$mps_to_kph         = 1 if !defined $mps_to_kph;
-$use_gmtime         = 0 if !defined $use_gmtime;
-$show_version       = 0 if !defined $show_version;
-$maybe_chained      = 0 if !defined $maybe_chained;
+my ($mps_to_kph, $semicircles_to_deg, $use_gmtime, $maybe_chained, $force, $version, $help) = (1, 1, 0, 0, 0, 0, 0);
+sub usage { "Usage: $0 [ --help --version --mps_to_kph=\$boole --semicircles_to_deg=\$boole --use_gmtime=\$boole --maybe_chained=\$boole --force ] \$input_file [ \$output_file ]\n" }
 
-if ($show_version) {
-    print $VERSION, "\n";
+GetOptions( "mps_to_kph=i"          =>  \$mps_to_kph,
+            "semicircles_to_deg=i"  =>  \$semicircles_to_deg,
+            "use_gmtime=i"          =>  \$use_gmtime,
+            "maybe_chained=i"       =>  \$maybe_chained,
+            "force"                 =>  \$force,
+            "version"               =>  \$version,
+            "help"                  =>  \$help,
+            )  or die usage();
+
+if ($version) {
+    print $0, " version: ", $VERSION, "\n";
     exit
+}
+die usage() if $help;
+
+my ($input_file, $output_file);
+if (@ARGV) {
+    $input_file = shift @ARGV;
+    @ARGV and $output_file = shift @ARGV
+}
+
+# disable warnings until I resolve them all, will soon delete this
+local $SIG{__WARN__} = sub { };
+
+my $fh;
+if ($output_file) {
+    if (-f $output_file) {
+        croak "$output_file already exists (specify --force to overwrite)" unless $force
+    }
+    open( STDOUT, '>', $output_file) or die "cannot open $output_file: $!"
 }
 
 sub dump_it {
@@ -50,14 +76,15 @@ sub dump_it {
 }
 
 sub fetch_from {
-    my $fn = shift;
+    my ($input_file, $output_fh) = (shift, shift);
+
     my $obj = new Geo::FIT;
 
-    $obj->semicircles_to_degree($semicircles_to_deg);
     $obj->mps_to_kph($mps_to_kph);
+    $obj->semicircles_to_degree($semicircles_to_deg);
     $obj->use_gmtime($use_gmtime);
     $obj->maybe_chained($maybe_chained);
-    $obj->file($fn);
+    $obj->file($input_file);
 
     my $o_cbmap = $obj->data_message_callback_by_name('');
 
@@ -122,32 +149,23 @@ sub fetch_from {
     $obj->close
 }
 
-if (@ARGV > 1) {
-    do {
-        print "***** $ARGV[0] *****\n";
-        &fetch_from(shift @ARGV)
-    } while (@ARGV)
-} elsif (@ARGV) {
-    &fetch_from($ARGV[0])
-} else {
-    &fetch_from('-')
-}
+fetch_from( $input_file, $fh );
 
 =head2 Options
 
 =over 4
 
-=item C<$maybe_chained>
+=item C<--mps_to_kph=($boolean)>
 
-Boolean to indicate that the input may be a chained FIT file (defaults to false).
+=item C<--semicircle_to_deg=($boolean)>
 
-=item C<-semicircle_to_deg($boolean)>
-
-=item C<-mps_to_kph($boolean)>
-
-=item C<-use_gmtime($boolean)>
+=item C<--use_gmtime=($boolean)>
 
 Options corresponding to object methods in L<Geo::FIT>. The first two default to true, C<-use_gmtime> to false.
+
+=item C<--$maybe_chained=($boolean)>
+
+Boolean to indicate that the input may be a chained FIT file (defaults to false).
 
 =back
 
