@@ -20,17 +20,13 @@ Geo::FIT - Decode Garmin FIT files
 
 The module also provides a script to read and print the contents for FIT files (`fitdump.pl`), as well as a script to convert FIT files to TCX files (`fit2tcx.pl`).
 
-## Constructor
+## Constructor Methods (class)
 
 - new()
 
     creates a new object and returns it.
 
 ## Class methods
-
-- version\_string()
-
-    returns a string representing the version of this class.
 
 - message\_name(_message spec_)
 
@@ -48,17 +44,13 @@ The module also provides a script to read and print the contents for FIT files (
 
     returns the field index for _field spec_ in _message spec_ or undef.
 
-- cat\_header(_protocol version_, _profile version_, _file length_\[, _refrencne to a scalar_\])
+- protocol\_version\_string()
 
-    composes the binary form of a .FIT file header, concatenates the scalar and it, and returns the reference to the scalar. If the 4th argument is omitted, it returns the reference to the binary form. _file length_ is assumed not to include the file header and trailing CRC.
+    returns a string representing the .FIT protocol version on which this class based.
 
-- crc\_of\_string(_old CRC_, _reference to a scalar_, _offset in scalar_, _counts_)
+- profile\_version\_string()
 
-    calculate CRC-16 of the specified part of the scalar.
-
-- my\_endian
-
-    returns the endian (0 for little endian and 1 for big endian) of the current system.
+    returns a string representing the .FIT protocol version on which this class based.
 
 ## Object methods
 
@@ -78,42 +70,29 @@ The module also provides a script to read and print the contents for FIT files (
 
     reads a message in the .FIT file, and returns `1` on success, or `undef` on failure or EOF.
 
-- unit\_table(_unit_ => _unit conversion table_)
+- error()
 
-    sets _unit conversion table_ for _unit_.
+    returns an error message recorded by a method.
 
-- semicircles\_to\_degree(_boolean_)
-- mps\_to\_kph(_boolean_)
+- crc()
 
-    wrapper methods of `unit_table()` method.
+    CRC-16 calculated from the contents of a .FIT file.
 
-- use\_gmtime(_boolean_)
+- crc\_expected()
 
-    sets the flag which of GMT or local timezone is used for `date_time` type value conversion.
+    CRC-16 attached to the end of a .FIT file. Only available after all contents of the file has been read.
 
-- protocol\_version\_string()
+- trailing\_garbages()
 
-    returns a string representing the .FIT protocol version on which this class based.
-
-- protocol\_version\_string(_version number_)
-
-    returns a string representing the .FIT protocol version _version number_.
-
-- profile\_version\_string()
-
-    returns a string representing the .FIT protocol version on which this class based.
-
-- profile\_version\_string(_version number_)()
-
-    returns a string representing the .FIT profile version _version number_.
-
-- data\_message\_callback\_by\_name(_message name_, _callback function_\[, _callback data_, ...\])
-
-    register a function _callback function_ which is called when a data message with the name _message name_ is fetched.
+    number of octets after CRC-16, 0 usually.
 
 - data\_message\_callback\_by\_num(_message number_, _callback function_\[, _callback data_, ...\])
 
     register a function _callback function_ which is called when a data message with the messag number _message number_ is fetched.
+
+- data\_message\_callback\_by\_name(_message name_, _callback function_\[, _callback data_, ...\])
+
+    register a function _callback function_ which is called when a data message with the name _message name_ is fetched.
 
 - switched(_data message descriptor_, _array of values_, _data type table_)
 
@@ -131,33 +110,28 @@ The module also provides a script to read and print the contents for FIT files (
 
     converts a human readable representation of a datum to an original form.
 
-- error()
+- use\_gmtime(_boolean_)
 
-    returns an error message recorded by a method.
+    sets the flag which of GMT or local timezone is used for `date_time` type value conversion.
 
-- crc\_expected()
+- unit\_table(_unit_ => _unit conversion table_)
 
-    CRC-16 attached to the end of a .FIT file. Only available after all contents of the file has been read.
+    sets _unit conversion table_ for _unit_.
 
-- crc()
+- semicircles\_to\_degree(_boolean_)
+- mps\_to\_kph(_boolean_)
 
-    CRC-16 calculated from the contents of a .FIT file.
-
-- trailing\_garbages()
-
-    number of octets after CRC-16, 0 usually.
+    wrapper methods of `unit_table()` method.
 
 - close()
 
     closes opened file handles.
 
-- cat\_definition\_message(_data message descriptor_\[, _reference to a scalar_\])
+- profile\_version\_string()
 
-    composes the binary form of a definition message after _data message descriptor_, concatenates the scalar and it, and returns the reference to the scalar. If the 2nd argument is omitted, returns the reference to the binary form.
+    Returns a string representation of the profile version used by the device or application that created the FIT file opened in the instance.
 
-- endian\_convert(_endian converter_, _reference to a scalar_, _offset in the scalar_)
-
-    apply _endian converter_ to the specified part of the scalar.
+    `fetch_header()` must have been called at least once for this method to be able to return a value, will raise an exception otherwise.
 
 ## Constants
 
@@ -285,7 +259,7 @@ Nothing in particular so far.
 
 # SEE ALSO
 
-[Geo::TCX](https://metacpan.org/pod/Geo%3A%3ATCX)
+[fit2tcx.pl](https://metacpan.org/pod/fit2tcx.pl), [fitdump.pl](https://metacpan.org/pod/fitdump.pl), [locations2gpx.pl](https://metacpan.org/pod/locations2gpx.pl), [Geo::TCX](https://metacpan.org/pod/Geo%3A%3ATCX), [Geo::Gpx](https://metacpan.org/pod/Geo%3A%3AGpx).
 
 # BUGS AND LIMITATIONS
 
@@ -303,7 +277,7 @@ Please visit the project page at: [https://github.com/patjoly/geo-fit](https://g
 
 # VERSION
 
-1.05
+1.06
 
 # LICENSE AND COPYRIGHT
 
