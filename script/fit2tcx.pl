@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '1.07';
+our $VERSION = '1.08';
 
 =encoding utf-8
 
@@ -914,7 +914,7 @@ Please visit the project page at: L<https://github.com/patjoly/geo-fit>.
 
 =head1 VERSION
 
-1.07
+1.08
 
 =head1 LICENSE AND COPYRIGHT
 
