@@ -1,5 +1,8 @@
 Revision history for Geo-FIT
 
+1.07 [2023-04-01]
+    Fixed the documentation regarding the return value of fetch()
+
 1.06 [2023-03-30]
     Fixed options in fitdump.pl script
 
