@@ -7101,7 +7101,7 @@ sub fetch_header {
 
     if ($h_len < $header_length) {
         $self->error("not a .FIT header ($h_len < $header_length)");
-        ();
+        return ()
     } else {
         my $extra;
 
@@ -7115,7 +7115,7 @@ sub fetch_header {
             $self->error("not a .FIT header (" .
                     join('', map {($_ ne "\\" && 0x20 >= ord($_) && ord($_) <= 0x7E) ? $_ : sprintf("\\x%02X", ord($_))} split //, pack('V', $sig))
                     . " ne '$FIT_signature_string')");
-            ();
+            return ()
         } else {
             my ($crc_expected, $crc_calculated);
 
@@ -7135,7 +7135,7 @@ sub fetch_header {
             }
             $self->{profile_version} = $prof_ver;
 
-            ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated);
+            return ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated)
         }
     }
 }
@@ -7160,33 +7160,32 @@ sub fetch {
     my $i = $self->offset;
     my $j = $self->file_processed + $i;
 
+    my $ret_val;
+
     if ($j < $self->file_size) {
         my $record_header = ord(substr($$buffer, $i, 1));
-        my $local_msg_type = -1;
+        my $local_msg_type;
 
         if ($record_header & $rechd_mask_compressed_timestamp_header) {
             $local_msg_type = ($record_header & $rechd_mask_cth_local_message_type) >> $rechd_offset_cth_local_message_type
         } elsif ($record_header & $rechd_mask_definition_message) {
-            $self->fetch_definition_message
+            $ret_val = $self->fetch_definition_message;     # always 1
+            return $ret_val
         } else {
             $local_msg_type = $record_header & $rechd_mask_local_message_type
         }
 
-        if ($local_msg_type < 0) {
-            1;
-        } else {
-            my $desc = $self->data_message_descriptor->[$local_msg_type];
+        my $desc = $self->data_message_descriptor->[$local_msg_type];
 
-            if (ref $desc eq 'HASH') {
-                $self->fetch_data_message($desc);
-            } else {
-                $self->error(sprintf("%d at %ld: not defined", $record_header, $j));
-            }
+        if (ref $desc eq 'HASH') {
+            $ret_val = $self->fetch_data_message($desc)
+        } else {
+            $ret_val = $self->error(sprintf("%d at %ld: not defined", $record_header, $j))
         }
     } elsif (!$self->maybe_chained && $j > $self->file_size) {
         $self->trailing_garbages($self->trailing_garbages + length($$buffer) - $i);
         $self->offset(length($$buffer));
-        1;
+        $ret_val = 1
     } else {
         $self->crc_calc(length($$buffer)) if !defined $self->crc;
 
@@ -7199,11 +7198,12 @@ sub fetch {
         $self->crc_expected($crc_expected);
         $self->offset($i + $crc_octets);
         $self->end_of_chunk(1);
-        !$self->maybe_chained;
+        $ret_val = !$self->maybe_chained
     }
+    return $ret_val
 }
 
-sub error_callback {            # consider making internal (_error_callback)
+sub error_callback {            # consider adding POD for error_callback otherwise make it internal (_error_callback)
     my $self = shift;
     if (@_) {
         if (&safe_isa($_[0], 'CODE')) {
@@ -7944,12 +7944,14 @@ sub fetch_data_message {
 
     my $cb = $desc->{callback};
 
+    my $ret_val;
     if (ref $cb eq 'ARRAY') {
         $v[0] & $rechd_mask_compressed_timestamp_header and push @v, $self->last_timestamp + ($v[0] & $rechd_mask_cth_timestamp);
-        $cb->[0]->($self, $desc, \@v, @$cb[1 .. $#$cb]);
+        $ret_val = $cb->[0]->($self, $desc, \@v, @$cb[1 .. $#$cb]);
     } else {
-        1;
+        $ret_val = 1;
     }
+    return $ret_val
 }
 
 sub pack_data_message {
