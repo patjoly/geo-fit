@@ -26,7 +26,7 @@ Geo::FIT - Decode Garmin FIT files
 
 C<Geo::FIT> is a Perl class to provide interfaces to decode Garmin FIT files (*.fit).
 
-The module also provides a script to read and print the contents for FIT files (C<fitdump.pl>), as well as a script to convert FIT files to TCX files (C<fit2tcx.pl>).
+The module also provides a script to read and print the contents of FIT files (L<fitdump.pl>), a script to convert FIT files to TCX files (L<fit2tcx.pl>), and a script to convert a locations file to GPX format (L<locations2gpx.pl>).
 
 =cut
 
@@ -7145,6 +7145,8 @@ sub fetch_header {
 =item fetch()
 
 reads a message in the .FIT file, and returns C<1> on success, or C<undef> on failure or EOF.
+
+If a data message callback is registered, C<fetch()> will return the value returned by the callback. It is therefore important to define explicit return statements and values in any callback (this includes returning true if that is the desired outcome after C<fetch()>).
 
 =back
 

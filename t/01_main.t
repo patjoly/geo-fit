@@ -35,7 +35,7 @@ my @msg_names = (qw/ file_id file_creator/, undef, qw/ event device_info source 
 my ($i, $n_descriptors, $n_previous_pass) = (0, 0, 0);
 while ( $o->fetch ) {
 
-    $n_descriptors = keys @{$o->{data_message_descriptor}};
+    $n_descriptors = @{$o->{data_message_descriptor}};
 
     if ($n_descriptors > $n_previous_pass) {
         my $msg_name = $msg_names[$i];
