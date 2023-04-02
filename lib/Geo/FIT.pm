@@ -31,6 +31,7 @@ The module also provides a script to read and print the contents of FIT files (L
 =cut
 
 use Carp qw/ croak /;
+use Clone;
 use FileHandle;
 use POSIX qw(BUFSIZ);
 use Time::Local;
@@ -88,40 +89,51 @@ sub FIT_UINT64() {15;}
 sub FIT_UINT64Z() {16;}
 sub FIT_BASE_TYPE_MAX() {FIT_UINT64Z;}
 
-my $rechd_offset_compressed_timestamp_header = 7;
-my $rechd_mask_compressed_timestamp_header = 1 << $rechd_offset_compressed_timestamp_header;
-my $rechd_offset_cth_local_message_type = 5;
-my $rechd_length_cth_local_message_type = 2;
-my $rechd_mask_cth_local_message_type = ((1 << $rechd_length_cth_local_message_type) - 1) << $rechd_offset_cth_local_message_type;
-my $rechd_length_cth_timestamp = $rechd_offset_cth_local_message_type;
-my $rechd_mask_cth_timestamp = (1 << $rechd_length_cth_timestamp) - 1;
-my $rechd_offset_definition_message = 6;
-my $rechd_mask_definition_message = 1 << $rechd_offset_definition_message;
-my $rechd_offset_devdata_message = 5;
-my $rechd_mask_devdata_message = 1 << $rechd_offset_devdata_message;
-my $rechd_length_local_message_type = 4;
-my $rechd_mask_local_message_type = (1 << $rechd_length_local_message_type) - 1;
-my $cthd_offset_local_message_type = 5;
-my $cthd_length_local_message_type = 2;
-my $cthd_mask_local_message_type = (1 << $cthd_length_local_message_type) - 1;
-my $cthd_length_time_offset = 5;
-my $cthd_mask_time_offset = (1 << $cthd_length_time_offset) - 1;
+my ($rechd_offset_compressed_timestamp_header, $rechd_mask_compressed_timestamp_header,
+    $rechd_offset_cth_local_message_type, $rechd_length_cth_local_message_type,
+    $rechd_mask_cth_local_message_type, $rechd_length_cth_timestamp, $rechd_mask_cth_timestamp,
+    $rechd_offset_definition_message, $rechd_mask_definition_message, $rechd_offset_devdata_message,
+    $rechd_mask_devdata_message, $rechd_length_local_message_type, $rechd_mask_local_message_type,
+    $cthd_offset_local_message_type, $cthd_length_local_message_type, $cthd_mask_local_message_type,
+    $cthd_length_time_offset, $cthd_mask_time_offset
+    );
 
-my $defmsg_min_template = 'C C C S C';
-my $defmsg_min_length = length(pack($defmsg_min_template));
+$rechd_offset_compressed_timestamp_header =  7;
+$rechd_mask_compressed_timestamp_header   =  1 << $rechd_offset_compressed_timestamp_header;
+$rechd_offset_cth_local_message_type      =  5;
+$rechd_length_cth_local_message_type      =  2;
+$rechd_mask_cth_local_message_type        =  ((1 << $rechd_length_cth_local_message_type) - 1) << $rechd_offset_cth_local_message_type;
+$rechd_length_cth_timestamp               =  $rechd_offset_cth_local_message_type;
+$rechd_mask_cth_timestamp                 =  (1 << $rechd_length_cth_timestamp) - 1;
+$rechd_offset_definition_message          =  6;
+$rechd_mask_definition_message            =  1 << $rechd_offset_definition_message;
+$rechd_offset_devdata_message             =  5;
+$rechd_mask_devdata_message               =  1 << $rechd_offset_devdata_message;
+$rechd_length_local_message_type          =  4;
+$rechd_mask_local_message_type            =  (1 << $rechd_length_local_message_type) - 1;
+$cthd_offset_local_message_type           =  5;
+$cthd_length_local_message_type           =  2;
+$cthd_mask_local_message_type             =  (1 << $cthd_length_local_message_type) - 1;
+$cthd_length_time_offset                  =  5;
+$cthd_mask_time_offset                    =  (1 << $cthd_length_time_offset) - 1;
 
-my $deffld_template = 'C C C';
-my $deffld_length = length(pack($deffld_template));
-my $deffld_mask_endian_p = 1 << 7;
-my $deffld_mask_type = (1 << 5) - 1;
+my ($defmsg_min_template, $defmsg_min_length);
+$defmsg_min_template  =  'C C C S C';
+$defmsg_min_length    =  length(pack($defmsg_min_template));
 
-my $devdata_min_template = 'C';
-my $devdata_min_length = length(pack($devdata_min_template));
-my $devdata_deffld_template = 'C C C';
-my $devdata_deffld_length = length(pack($deffld_template));
+my ($deffld_template, $deffld_length, $deffld_mask_endian_p, $deffld_mask_type);
+$deffld_template       =  'C C C';
+$deffld_length         =  length(pack($deffld_template));
+$deffld_mask_endian_p  =  1 << 7;
+$deffld_mask_type      =  (1 << 5) - 1;
+
+my ($devdata_min_template, $devdata_min_length, $devdata_deffld_template, $devdata_deffld_length);
+$devdata_min_template    = 'C';
+$devdata_min_length      = length(pack($devdata_min_template));
+$devdata_deffld_template = 'C C C';
+$devdata_deffld_length   = length(pack($deffld_template));
 
 my @invalid = (0xFF) x ($deffld_mask_type + 1);
-
 $invalid[FIT_SINT8] = 0x7F;
 $invalid[FIT_SINT16] = 0x7FFF;
 $invalid[FIT_UINT16] = 0xFFFF;
@@ -213,15 +225,15 @@ sub invalid {
 }
 
 my @size = (1) x ($deffld_mask_type + 1);
-
 $size[FIT_SINT16] = $size[FIT_UINT16] = $size[FIT_UINT16Z] = 2;
 $size[FIT_SINT32] = $size[FIT_UINT32] = $size[FIT_UINT32Z] = $size[FIT_FLOAT32] = 4;
 $size[FIT_FLOAT64] = $size[FIT_SINT64] = $size[FIT_UINT64] = $size[FIT_UINT64Z] = 8;
 
-my @template = ('C') x ($deffld_mask_type + 1);
-my @packfactor = (1) x ($deffld_mask_type + 1);
-my @packfilter = (undef) x ($deffld_mask_type + 1);
-my @unpackfilter = (undef) x ($deffld_mask_type + 1);
+my (@template, @packfactor, @packfilter, @unpackfilter);
+@template     = ('C') x ($deffld_mask_type + 1);
+@packfactor   = (1) x ($deffld_mask_type + 1);
+@packfilter   = (undef) x ($deffld_mask_type + 1);
+@unpackfilter = (undef) x ($deffld_mask_type + 1);
 
 $template[FIT_SINT8] = 'c';
 $template[FIT_SINT16] = 's';
@@ -6636,7 +6648,7 @@ for my $msgname (keys %msgtype_by_name) {
     }
 }
 
-=head2 Constructor Methods (class)
+=head2 Constructor Methods
 
 =over 4
 
@@ -6653,6 +6665,28 @@ sub new {
     my $self = +{};
     bless $self, $class;
     $self->initialize(@_);
+}
+
+=over 4
+
+=item clone()
+
+Returns a copy of a C<Geo::FIT> instance.
+
+C<clone()> is experimental and support for it may be removed at any time. Use with caution particularly if there are open filehandles, it which case it is recommended to C<close()> before cloning.
+
+It also does not return a full deep copy if any callbacks are registered, it creates a reference to them. There is no known way to make deep copies of anonymous subroutines in Perl (if you know of one, please make a pull request).
+
+The main use for c<clone()> is immediately after C<new()>, and C<file()>, to create a copy for later use.
+
+=back
+
+=cut
+
+sub clone {
+    my $self = shift;
+    my $clone = Clone::clone( $self );
+    return $clone
 }
 
 =head2 Class methods
@@ -7206,7 +7240,8 @@ sub fetch {
 sub error_callback {            # consider adding POD for error_callback otherwise make it internal (_error_callback)
     my $self = shift;
     if (@_) {
-        if (&safe_isa($_[0], 'CODE')) {
+        # if (&safe_isa($_[0], 'CODE')) {
+        if (ref $_[0] and ref $_[0] eq 'CODE') {
             $self->{error_callback_argv} = [@_[1 .. $#_]];
             $self->{error_callback} = $_[0];
         } else {
@@ -7239,8 +7274,12 @@ sub error {
 
         $self->{error} = "${p}::$subr\#$l\@$fn: $fit$_[0]";
 
-        if (&safe_isa($self->{error_callback}, 'CODE')) {
-            my $argv = &safe_isa($self->{error_callback_argv}, 'ARRAY') ? $self->{error_callback_argv} : [];
+        # if (&safe_isa($self->{error_callback}, 'CODE')) {
+        #      my $argv = &safe_isa($self->{error_callback_argv}, 'ARRAY') ? $self->{error_callback_argv} : [];
+        my $is_cb = $self->{error_callback};
+        my $is_cb_argv = $self->{error_callback_argv};
+        if (ref $is_cb and ref $is_cb eq 'CODE') {
+            my $argv = (ref $is_cb_argv and ref $is_cb_argv eq 'ARRAY') ? $is_cb_argv : [];
 
             $self->{error_callback}->($self, @$argv);
         } else {

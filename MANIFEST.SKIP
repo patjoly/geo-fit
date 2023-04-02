@@ -6,4 +6,7 @@
 ^MANIFEST\.SKIP$
 ^README$
 ^Makefile.bak$
+^t/.*\.bak$
+^t/.*\.csv$
+^lib/Geo/.*\.bak$
 
