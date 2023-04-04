@@ -6943,51 +6943,16 @@ sub maybe_chained {
     }
 }
 
-sub really_clear_buffer {
-    my $self = shift;
-    my $buffer = $self->{buffer};
-
-    $self->crc_calc(length($$buffer)) if !defined $self->crc;
-    $self->file_processed($self->file_processed + $self->offset);
-    substr($$buffer, 0, $self->offset) = '';
-    $self->offset(0);
-}
-
-sub cp_fit {
-    my $self = shift;
-    if (@_) {
-        $self->{cp_fit} = $_[0];
-    } else {
-        $self->{cp_fit};
-    }
-}
-
-sub cp_fit_FH {
-    my $self = shift;
-    if (@_) {
-        $self->{cp_fit_FH} = $_[0];
-    } else {
-        $self->{cp_fit_FH};
-    }
-}
-
 sub clear_buffer {
     my $self = shift;
     if ($self->offset > 0) {
-        if ($self->cp_fit) {
-            my $FH = $self->cp_fit_FH;
-
-            if (&safe_isa($FH, 'FileHandle') && $FH->opened) {
-                my $buffer = $self->buffer;
-
-                $FH->print(substr($$buffer, 0, $self->offset));
-                $FH->flush;
-                $self->really_clear_buffer;
-            }
-        } else {
-            $self->really_clear_buffer;
-        }
+        my $buffer = $self->{buffer};
+        $self->crc_calc(length($$buffer)) if !defined $self->crc;
+        $self->file_processed($self->file_processed + $self->offset);
+        substr($$buffer, 0, $self->offset) = '';
+        $self->offset(0)
     }
+    return 1
 }
 
 =head2 Object methods
@@ -8281,7 +8246,7 @@ sub reset {
     $self->clear_buffer;
 
     %$self = map {($_ => $self->{$_})} qw(error buffer FH data_message_callback unit_table profile_version
-                                          cp_fit cp_fit_FH EOF use_gmtime numeric_date_time without_unit maybe_chained);
+                                          EOF use_gmtime numeric_date_time without_unit maybe_chained);
 
     my $buffer = $self->buffer;
     $self->file_read(length($$buffer));
@@ -8555,10 +8520,7 @@ closes opened file handles.
 
 sub close {
     my $self = shift;
-    my $cp_fit_FH = $self->cp_fit_FH;
     my $FH = $self->FH;
-
-    $cp_fit_FH->close if &safe_isa($cp_fit_FH, 'FileHandle') && $cp_fit_FH->opened;
     $FH->close if $FH->opened;
 }
 
