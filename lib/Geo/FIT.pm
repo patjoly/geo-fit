@@ -7035,34 +7035,41 @@ sub end_of_chunk {
 }
 
 sub fill_buffer {
-    my ($self, $req) = @_;
+    my $self = shift;
     my $buffer = $self->buffer;
+    croak 'fill_buffer() expects no argument' if @_;
 
-    while (length($$buffer) - $self->offset < $req) {
-        $self->clear_buffer;
-        my $n = $self->FH->read($$buffer, BUFSIZ, length($$buffer));
+    $self->clear_buffer;
 
-        if ($n > 0) {
-            $self->file_read($self->file_read + $n);
+    my $n = $self->FH->read($$buffer, BUFSIZ, length($$buffer));
 
-            if (defined $self->file_size) {
-                if (defined $self->crc) {
-                    $self->crc_calc($n);
-                } else {
-                    $self->crc_calc(length($$buffer));
-                }
-            }
-        } else {
-            if (defined $n) {
-                $self->error("unexpected EOF");
-                $self->EOF(1);
+    if ($n > 0) {
+        $self->file_read($self->file_read + $n);
+
+        if (defined $self->file_size) {
+            if (defined $self->crc) {
+                $self->crc_calc($n);
             } else {
-                $self->error("read(FH): $!");
+                $self->crc_calc(length($$buffer));
             }
-            return undef
         }
+    } else {
+        if (defined $n) {
+            $self->error("unexpected EOF");
+            $self->EOF(1);
+        } else {
+            $self->error("read(FH): $!");
+        }
+        return undef
     }
     return 1
+}
+
+sub _buffer_needs_updating {
+    my ($self, $bytes_needed) = @_;
+    my ($buffer, $offset) = ($self->buffer, $self->offset);     # easier to debug with variables
+    if  ( length($$buffer) - $offset < $bytes_needed ) { return 1 }
+    else { return 0 }
 }
 
 my $header_template = 'C C v V V';
@@ -7090,22 +7097,25 @@ reads .FIT file header, and returns an array of the file size (excluding the tra
 
 sub fetch_header {
     my $self = shift;
-    $self->fill_buffer($header_length) || return undef;
-
     my $buffer = $self->buffer;
+
+    if ( $self->_buffer_needs_updating( $header_length ) ) {
+        $self->fill_buffer or return undef
+    }
     my $h_min = substr($$buffer, $self->offset, $header_length);
     my ($h_len, $proto_ver, $prof_ver, $f_len, $sig) = unpack($header_template, $h_min);
-
     $self->offset($self->offset + $header_length);
 
-    if ($h_len < $header_length) {
+    if ($h_len < $header_length) {          # TODO: put this in a variable i.e. when we have 14-byte headers
         $self->error("not a .FIT header ($h_len < $header_length)");
         return ()
     } else {
         my $extra;
 
         if ($h_len > $header_length) {
-            $self->fill_buffer($h_len - $header_length) || return undef;
+            if ( $self->_buffer_needs_updating( $h_len - $header_length ) ) {
+                $self->fill_buffer or return undef
+            }
             $extra = substr($$buffer, $self->offset, $h_len - $header_length);
             $self->offset($self->offset + $h_len - $header_length);
         }
@@ -7153,9 +7163,11 @@ If a data message callback is registered, C<fetch()> will return the value retur
 
 sub fetch {
     my $self = shift;
-    $self->fill_buffer($crc_octets) or return undef;
-
     my $buffer = $self->buffer;
+
+    if ( $self->_buffer_needs_updating( $crc_octets ) ) {
+        $self->fill_buffer or return undef
+    }
     my $i = $self->offset;
     my $j = $self->file_processed + $i;
 
@@ -7721,10 +7733,11 @@ sub add_endian_converter {
 
 sub fetch_definition_message {
     my $self = shift;
-
-    $self->fill_buffer($defmsg_min_length) || return undef;
-
     my $buffer = $self->buffer;
+
+    if ( $self->_buffer_needs_updating( $defmsg_min_length ) ) {
+        $self->fill_buffer or return undef
+    }
     my $i = $self->offset;
     my ($record_header, $reserved, $endian, $msgnum, $nfields) = unpack($defmsg_min_template, substr($$buffer, $i, $defmsg_min_length));
 
@@ -7733,7 +7746,9 @@ sub fetch_definition_message {
 
     my $len = $nfields * $deffld_length;
 
-    $self->fill_buffer($len) || return undef;
+    if ( $self->_buffer_needs_updating( $len ) ) {
+        $self->fill_buffer or return undef
+    }
     $i = $self->offset;
     $msgnum = unpack('n', pack('v', $msgnum)) if $endian != $my_endian;
 
@@ -7804,12 +7819,17 @@ sub fetch_definition_message {
 
     if ($record_header & $rechd_mask_devdata_message) {
         $self->offset($e);
-        $self->fill_buffer($devdata_min_length) || return undef;
+        if ( $self->_buffer_needs_updating( $devdata_min_length ) ) {
+            $self->fill_buffer or return undef
+        }
         $i = $self->offset;
         ($nfields) = unpack($devdata_min_template, substr($$buffer, $i, $devdata_min_length));
+
         $self->offset($i + $devdata_min_length);
         $len = $nfields * $devdata_deffld_length;
-        $self->fill_buffer($len) || return undef;
+        if ( $self->_buffer_needs_updating( $len ) ) {
+            $self->fill_buffer or return undef
+        }
 
         my $devdata_by_index = $self->{devdata_by_index};
         my @emsg;
@@ -7915,11 +7935,13 @@ sub last_timestamp {
 
 sub fetch_data_message {
     my ($self, $desc) = @_;
+    my $buffer = $self->buffer;
 
-    $self->fill_buffer($desc->{message_length}) || return undef;
+    if ( $self->_buffer_needs_updating( $desc->{message_length} ) ) {
+        $self->fill_buffer or return undef
+    }
     $self->endian_convert($desc->{endian_converter}, $self->buffer, $self->offset) if ref $desc->{endian_converter} eq 'ARRAY';
 
-    my $buffer = $self->buffer;
     my $i = $self->offset;
     # unpack('f'/'d', ...) unpacks to NaN
     my @v = unpack($desc->{template}, substr($$buffer, $i, $desc->{message_length}));
