@@ -7104,49 +7104,46 @@ sub fetch_header {
     }
     my $h_min = substr($$buffer, $self->offset, $header_length);
     my ($h_len, $proto_ver, $prof_ver, $f_len, $sig) = unpack($header_template, $h_min);
+    my $f_size = $f_len + $h_len;
     $self->offset($self->offset + $header_length);
 
-    if ($h_len < $header_length) {          # TODO: put this in a variable i.e. when we have 14-byte headers
+    my ($extra, $header_extra_bytes, $crc_expected, $crc_calculated);
+    $header_extra_bytes = $h_len - $header_length;   # headers are now typically 14 bytes instead of 12
+
+    if ($header_extra_bytes < 0) {
         $self->error("not a .FIT header ($h_len < $header_length)");
         return ()
-    } else {
-        my $extra;
-
-        if ($h_len > $header_length) {
-            if ( $self->_buffer_needs_updating( $h_len - $header_length ) ) {
-                $self->fill_buffer or return undef
-            }
-            $extra = substr($$buffer, $self->offset, $h_len - $header_length);
-            $self->offset($self->offset + $h_len - $header_length);
-        }
-
-        if ($sig != $FIT_signature) {
-            $self->error("not a .FIT header (" .
-                    join('', map {($_ ne "\\" && 0x20 >= ord($_) && ord($_) <= 0x7E) ? $_ : sprintf("\\x%02X", ord($_))} split //, pack('V', $sig))
-                    . " ne '$FIT_signature_string')");
-            return ()
-        } else {
-            my ($crc_expected, $crc_calculated);
-
-            if ($proto_ver >= $protocol_version_header_crc_started && length($extra) >= $header_crc_length) {
-                $crc_expected = unpack($header_crc_template, substr($extra, -$header_crc_length));
-                substr($extra, -$header_crc_length) = '';
-                $crc_calculated = $self->crc_of_string(0, \$h_min, 0, $header_length);
-            }
-
-            my $f_size = $f_len + $h_len;
-
-            $self->file_size($f_size);
-
-            unless (defined $self->crc) {
-                $self->crc(0);
-                $self->crc_calc(length($$buffer));
-            }
-            $self->{profile_version} = $prof_ver;
-
-            return ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated)
-        }
     }
+
+    if ($header_extra_bytes) {
+        if ( $self->_buffer_needs_updating( $header_extra_bytes ) ) {
+            $self->fill_buffer or return undef
+        }
+        $extra = substr($$buffer, $self->offset, $header_extra_bytes );
+        $self->offset($self->offset + $header_extra_bytes );
+    }
+
+    if ($sig != $FIT_signature) {
+        $self->error("not a .FIT header (" .
+                join('', map {($_ ne "\\" && 0x20 >= ord($_) && ord($_) <= 0x7E) ? $_ : sprintf("\\x%02X", ord($_))} split //, pack('V', $sig))
+                . " ne '$FIT_signature_string')");
+        return ()
+    }
+
+    if ($proto_ver >= $protocol_version_header_crc_started && length($extra) >= $header_crc_length) {
+        $crc_expected = unpack($header_crc_template, substr($extra, -$header_crc_length));
+        substr($extra, -$header_crc_length) = '';
+        $crc_calculated = $self->crc_of_string(0, \$h_min, 0, $header_length);
+    }
+
+    $self->file_size($f_size);
+    unless (defined $self->crc) {
+        $self->crc(0);
+        $self->crc_calc(length($$buffer));
+    }
+
+    $self->{profile_version} = $prof_ver;
+    return ($f_size, $proto_ver, $prof_ver, $extra, $crc_expected, $crc_calculated)
 }
 
 =over 4
