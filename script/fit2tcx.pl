@@ -311,7 +311,7 @@ my @tpmask;
 my @tpfake;
 &tpmask_make($tpfake, \@tpfake);
 
-my %memo = ('tpv' => [], 'trackv' => [], 'lapv' => [], 'av' => []);
+my $memo = { 'tpv' => [], 'trackv' => [], 'lapv' => [], 'av' => [] };
 my $fit = new Geo::FIT;
 
 $fit->use_gmtime(1);
@@ -583,12 +583,12 @@ sub output {
     }
 }
 
-$fit->data_message_callback_by_name('file_id', \&cb_file_id, \%memo) || die $fit->error;
-$fit->data_message_callback_by_name('device_info', \&cb_device_info, \%memo) || die $fit->error;
-$fit->data_message_callback_by_name('record', \&cb_record, \%memo) || die $fit->error;
-$fit->data_message_callback_by_name('event', \&cb_event, \%memo) || die $fit->error;
-$fit->data_message_callback_by_name('lap', \&cb_lap, \%memo) || die $fit->error;
-$fit->data_message_callback_by_name('session', \&cb_session, \%memo) || die $fit->error;
+$fit->data_message_callback_by_name('file_id',     \&cb_file_id,     $memo) or die $fit->error;
+$fit->data_message_callback_by_name('device_info', \&cb_device_info, $memo) or die $fit->error;
+$fit->data_message_callback_by_name('record',      \&cb_record,      $memo) or die $fit->error;
+$fit->data_message_callback_by_name('event',       \&cb_event,       $memo) or die $fit->error;
+$fit->data_message_callback_by_name('lap',         \&cb_lap,         $memo) or die $fit->error;
+$fit->data_message_callback_by_name('session',     \&cb_session,     $memo) or die $fit->error;
 $fit->file($from);
 $fit->open || die $fit->error;
 
@@ -607,11 +607,11 @@ my ($fsize, $proto_ver, $prof_ver, $h_extra, $h_crc_expected, $h_crc_calculated)
 
 defined $fsize || &dead($fit);
 
-my ($proto_major, $proto_minor) = $fit->protocol_version_major($proto_ver);
-my ($prof_major, $prof_minor) = $fit->profile_version_major($prof_ver);
+my $protocol_version          = $fit->protocol_version( $proto_ver );
+my ($prof_major, $prof_minor) = $fit->profile_version(  $prof_ver  );
 
 if ($verbose) {
-    printf "File size: %lu, protocol version: %u.%02u, profile_verion: %u.%02u\n", $fsize, $proto_major, $proto_minor, $prof_major, $prof_minor;
+    printf "File size: %lu, protocol version: %u, profile_version: %u.%02u\n", $fsize, $protocol_version, $prof_major, $prof_minor;
 
     if ($h_extra ne '') {
         print "Hex dump of extra octets in the file header";
@@ -635,14 +635,13 @@ $fit->EOF || &dead($fit);
 
 if ($verbose) {
     printf "CRC: expected=0x%04X, calculated=0x%04X\n", $fit->crc_expected, $fit->crc;
-
     my $garbage_size = $fit->trailing_garbages;
-    print "Trailing $garbage_size octets garbages skipped\n" if $garbage_size > 0
+    print "Trailing $garbage_size octets garbages skipped\n" if defined $garbage_size and $garbage_size > 0
 }
 
 $fit->close;
 
-my $av = $memo{av};
+my $av = $memo->{av};
 
 if (@$av) {
     my ($i, $j);
@@ -701,7 +700,7 @@ if (@$av && (@tpmask || @tpfake)) {
 
                     for my $mask (@tpmask) {
                         if ($mask->[0]->(@{$tpv->[$r]->{Position}}{qw(LatitudeDegrees LongitudeDegrees)}, @$mask[1 .. $#$mask])) {
-                            $memo{ntps} -= 1;
+                            $memo->{ntps} -= 1;
                             $masked = 1;
                             last
                         }
@@ -805,7 +804,7 @@ if (@$av) {
 
     my $skip;
 
-    if ($tplimit > 0 && ($skip = $memo{ntps} / $tplimit) > 1) {
+    if ($tplimit > 0 && ($skip = $memo->{ntps} / $tplimit) > 1) {
         for my $a (@$av) {
             for my $l (@{$a->{Lap}}) {
                 for my $t (@{$l->{Track}}) {

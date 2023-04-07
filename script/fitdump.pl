@@ -111,11 +111,11 @@ sub fetch_from {
             return
         }
 
-        my ($proto_major, $proto_minor) = $obj->protocol_version_major($proto_ver);
-        my ($prof_major, $prof_minor) = $obj->profile_version_major($prof_ver);
+        my $protocol_version          = $obj->protocol_version(      $proto_ver );
+        my ($prof_major, $prof_minor) = $obj->profile_version_major( $prof_ver );
 
         print "\n" if $chained;
-        printf "File size: %lu, protocol version: %u.%02u, profile_verion: %u.%02u\n", $fsize, $proto_major, $proto_minor, $prof_major, $prof_minor;
+        printf "File size: %lu, protocol version: %u, profile_version: %u.%02u\n", $fsize, $protocol_version, $prof_major, $prof_minor;
 
         if ($h_extra ne '') {
             print "Hex dump of extra octets in the file header";

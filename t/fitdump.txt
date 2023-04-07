@@ -1,4 +1,4 @@
-File size: 11074, protocol version: 1.00, profile_verion: 21.72
+File size: 11074, protocol version: 16, profile_version: 21.72
 File header CRC: expected=0xB45F, calculated=0xB45F
 Local message type: 0 (20 octets, message name: file_id, message number: 0)
   serial_number (3-1-UINT32Z): 3407998384
