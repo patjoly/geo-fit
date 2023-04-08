@@ -6773,7 +6773,7 @@ returns a string representing the .FIT protocol version on which this class base
 
 =item profile_version_string()
 
-returns a string representing the .FIT protocol version on which this class based.
+returns a string representing the .FIT profile version on which this class based.
 
 =back
 
@@ -6878,10 +6878,10 @@ for ($i = 0 ; $i < 2 ** 8 ; ++$i) {
 }
 
 sub dump {
-    my ($self, $s, $FH) = @_;
+    my ($self, $s, $fh) = @_;
     my ($i, $d);
     for ($i = 0 ; $i < length($s) ;) {
-        $FH->printf(' %03u', ord(substr($s, $i++, 1)));
+        $fh->printf(' %03u', ord(substr($s, $i++, 1)));
     }
 }
 
@@ -6991,28 +6991,28 @@ sub open {
     my $fn = $self->file;
 
     if ($fn ne '') {
-        my $FH = $self->FH;
+        my $fh = $self->fh;
 
-        if ($FH->open("< $fn")) {
-            if (binmode $FH, ':raw') {
+        if ($fh->open("< $fn")) {
+            if (binmode $fh, ':raw') {
                 1;
             } else {
-                $self->error("binmode \$FH, ':raw': $!");
+                $self->error("binmode \$fh, ':raw': $!");
             }
         } else {
-            $self->error("\$FH->open(\"< $fn\"): $!");
+            $self->error("\$fh->open(\"< $fn\"): $!");
         }
     } else {
         $self->error('no file name given');
     }
 }
 
-sub FH {
+sub fh {
     my $self = shift;
     if (@_) {
-        $self->{FH} = $_[0];
+        $self->{fh} = $_[0];
     } else {
-        $self->{FH};
+        $self->{fh};
     }
 }
 
@@ -7041,7 +7041,7 @@ sub fill_buffer {
 
     $self->clear_buffer;
 
-    my $n = $self->FH->read($$buffer, BUFSIZ, length($$buffer));
+    my $n = $self->fh->read($$buffer, BUFSIZ, length($$buffer));
 
     if ($n > 0) {
         $self->file_read($self->file_read + $n);
@@ -7058,7 +7058,7 @@ sub fill_buffer {
             $self->error("unexpected EOF");
             $self->EOF(1);
         } else {
-            $self->error("read(FH): $!");
+            $self->error("read(fh): $!");
         }
         return undef
     }
@@ -7097,6 +7097,9 @@ reads .FIT file header, and returns an array of the file size (excluding the tra
 
 sub fetch_header {
     my $self = shift;
+    croak 'call the open() method before fetching the header' if $self->fh->tell < 0;
+    croak '.FIT file header has already been fetched'         if $self->fh->tell > 0;
+
     my $buffer = $self->buffer;
 
     if ( $self->_buffer_needs_updating( $header_length ) ) {
@@ -7150,7 +7153,7 @@ sub fetch_header {
 
 =item fetch()
 
-reads a message in the .FIT file, and returns C<1> on success, or C<undef> on failure or EOF.
+reads a message in the .FIT file, and returns C<1> on success, or C<undef> on failure or EOF. C<fetch_header()> must have been called before the first attempt to C<fetch()> after opening the file.
 
 If a data message callback is registered, C<fetch()> will return the value returned by the callback. It is therefore important to define explicit return statements and values in any callback (this includes returning true if that is the desired outcome after C<fetch()>).
 
@@ -7160,6 +7163,9 @@ If a data message callback is registered, C<fetch()> will return the value retur
 
 sub fetch {
     my $self = shift;
+    croak 'call the fetch_header() method before calling fetch()' if $self->fh->tell == 0;
+    croak 'open() and fetch_header() methods need to be called before calling fetch()' if $self->fh->tell < 0;
+
     my $buffer = $self->buffer;
 
     if ( $self->_buffer_needs_updating( $crc_octets ) ) {
@@ -8248,7 +8254,7 @@ sub initialize {
         'file_processed' => 0,
         'offset' => 0,
         'buffer' => \$buffer,
-        'FH' => new FileHandle,
+        'fh' => new FileHandle,
         'data_message_callback' => +{},
         'unit_table' => +{},
         'drop_developer_data' => 0,
@@ -8264,7 +8270,7 @@ sub reset {
     my $self = shift;
     $self->clear_buffer;
 
-    %$self = map {($_ => $self->{$_})} qw(error buffer FH data_message_callback unit_table profile_version
+    %$self = map {($_ => $self->{$_})} qw(error buffer fh data_message_callback unit_table profile_version
                                           EOF use_gmtime numeric_date_time without_unit maybe_chained);
 
     my $buffer = $self->buffer;
@@ -8298,10 +8304,10 @@ sub isnan {
 
 sub print_all_fields {
     my ($self, $desc, $v, %opt) = @_;
-    my ($indent, $FH, $skip_invalid) = @opt{qw(indent FH skip_invalid)};
+    my ($indent, $fh, $skip_invalid) = @opt{qw(indent fh skip_invalid)};
 
-    $FH=\*STDOUT if !defined $FH;
-    $FH->print($indent, 'compressed_timestamp: ', $self->named_type_value('date_time', $v->[$#$v]), "\n") if $desc->{array_length} == $#$v;
+    $fh = \*STDOUT if !defined $fh;
+    $fh->print($indent, 'compressed_timestamp: ', $self->named_type_value('date_time', $v->[$#$v]), "\n") if $desc->{array_length} == $#$v;
 
     for my $i_name (sort {$desc->{$a} <=> $desc->{$b}} grep {/^i_/} keys %$desc) {
         my $name = $i_name;
@@ -8334,32 +8340,32 @@ sub print_all_fields {
 
         if ($j < $c || !$skip_invalid) {
             $self->last_timestamp($v->[$i]) if $type == FIT_UINT32 && $tname eq 'date_time' && $pname eq 'timestamp';
-            $FH->print($indent, $pname, ' (', $desc->{'N_' . $name}, '-', $c, '-', $type_name[$type] ne '' ? $type_name[$type] : $type);
-            $FH->print(', original name: ', $name) if $name ne $pname;
-            $FH->print(', INVALID') if $j >= $c;
-            $FH->print('): ');
+            $fh->print($indent, $pname, ' (', $desc->{'N_' . $name}, '-', $c, '-', $type_name[$type] ne '' ? $type_name[$type] : $type);
+            $fh->print(', original name: ', $name) if $name ne $pname;
+            $fh->print(', INVALID') if $j >= $c;
+            $fh->print('): ');
 
             if ($type == FIT_STRING) {
-                $FH->print("\"", $self->string_value($v, $i, $c), "\"\n");
+                $fh->print("\"", $self->string_value($v, $i, $c), "\"\n");
             } else {
-                $FH->print('{') if $c > 1;
+                $fh->print('{') if $c > 1;
 
                 my $pval = $self->value_cooked($tname, $attr, $invalid, $v->[$i]);
 
-                $FH->print($pval);
-                $FH->print(' (', $v->[$i], ')') if $v->[$i] ne $pval;
+                $fh->print($pval);
+                $fh->print(' (', $v->[$i], ')') if $v->[$i] ne $pval;
 
                 if ($c > 1) {
                     my ($j, $k);
 
                     for ($j = $i + 1, $k = $i + $c ; $j < $k ; ++$j) {
                         $pval = $self->value_cooked($tname, $attr, $invalid, $v->[$j]);
-                        $FH->print(', ', $pval);
-                        $FH->print(' (', $v->[$j], ')') if $v->[$j] ne $pval;
+                        $fh->print(', ', $pval);
+                        $fh->print(' (', $v->[$j], ')') if $v->[$j] ne $pval;
                     }
-                    $FH->print('}');
+                    $fh->print('}');
                 }
-                $FH->print("\n");
+                $fh->print("\n");
             }
         }
     }
@@ -8368,13 +8374,13 @@ sub print_all_fields {
 
 sub print_all_json {
     my ($self, $desc, $v, %opt) = @_;
-    my ($indent, $FH, $skip_invalid) = @opt{qw(indent FH skip_invalid)};
+    my ($indent, $fh, $skip_invalid) = @opt{qw(indent fh skip_invalid)};
 
     my $out = 0;
 
-    $FH=\*STDOUT if !defined $FH;
+    $fh = \*STDOUT if !defined $fh;
     if ($desc->{array_length} == $#$v) {
-        $FH->print($indent, '"compressed_timestamp": "', $self->named_type_value('date_time', $v->[$#$v]), '"');
+        $fh->print($indent, '"compressed_timestamp": "', $self->named_type_value('date_time', $v->[$#$v]), '"');
         $out = $out + 1;
     }
 
@@ -8409,20 +8415,20 @@ sub print_all_json {
 
         if ($j < $c || !$skip_invalid) {
             $self->last_timestamp($v->[$i]) if $type == FIT_UINT32 && $tname eq 'date_time' && $pname eq 'timestamp';
-            $FH->print(",\n") if $out;
-            $FH->print($indent, '"', $pname, '": ');
+            $fh->print(",\n") if $out;
+            $fh->print($indent, '"', $pname, '": ');
 
             if ($type == FIT_STRING) {
-                $FH->print("\"", $self->string_value($v, $i, $c), "\"");
+                $fh->print("\"", $self->string_value($v, $i, $c), "\"");
             } else {
-                $FH->print('[') if $c > 1;
+                $fh->print('[') if $c > 1;
 
                 my $pval = $self->value_cooked($tname, $attr, $invalid, $v->[$i]);
 
                 if (looks_like_number($pval)) {
-                    $FH->print($pval);
+                    $fh->print($pval);
                 } else {
-                    $FH->print("\"$pval\"");
+                    $fh->print("\"$pval\"");
                 }
 
                 if ($c > 1) {
@@ -8430,15 +8436,15 @@ sub print_all_json {
 
                     for ($j = $i + 1, $k = $i + $c ; $j < $k ; ++$j) {
                         $pval = $self->value_cooked($tname, $attr, $invalid, $v->[$j]);
-                        $FH->print(', ');
+                        $fh->print(', ');
                         if (looks_like_number($pval)) {
-                            $FH->print($pval);
+                            $fh->print($pval);
                         } else {
-                            $FH->print("\"$pval\"");
+                            $fh->print("\"$pval\"");
                         }
                     }
 
-                    $FH->print(']');
+                    $fh->print(']');
                 }
             }
             $out = $out + 1;
@@ -8539,8 +8545,8 @@ closes opened file handles.
 
 sub close {
     my $self = shift;
-    my $FH = $self->FH;
-    $FH->close if $FH->opened;
+    my $fh = $self->fh;
+    $fh->close if $fh->opened;
 }
 
 =over 4
