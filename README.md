@@ -5,13 +5,31 @@ Geo::FIT - Decode Garmin FIT files
 # SYNOPSIS
 
     use Geo::FIT;
-    $fit = Geo::FIT->new();
-    $fit->file( $fname )
-    $fit->open;
-    $fit->fetch_header;
-    $fit->fetch;
-    $fit->data_message_callback_by_name( $message name,   \&callback_function [, \%callback_data, ... ] );
-    $fit->data_message_callback_by_num(  $message number, \&callback_function [, \%callback_data, ... ] );
+
+Create an instance, assign a FIT file to it, open it:
+
+    my $fit = Geo::FIT->new();
+    $fit->file( $fname );
+    $fit->open or die $fit->error;
+
+Register a callback to get some info on where we've been and when:
+
+    my $record_callback = sub {
+        my ($self, $descriptor, $values) = @_;
+
+        my $time= $self->field_value( 'timestamp',     $descriptor, $values );
+        my $lat = $self->field_value( 'position_lat',  $descriptor, $values );
+        my $lon = $self->field_value( 'position_long', $descriptor, $values );
+
+        print "Time was: ", join("\t", $time, $lat, $lon), "\n"
+        };
+
+    $fit->data_message_callback_by_name('record', $record_callback ) or die $fit->error;
+
+    my @header_things = $fit->fetch_header;
+
+    1 while ( $fit->fetch );
+
     $fit->close;
 
 # DESCRIPTION
@@ -20,11 +38,21 @@ Geo::FIT - Decode Garmin FIT files
 
 The module also provides a script to read and print the contents of FIT files ([fitdump.pl](https://metacpan.org/pod/fitdump.pl)), a script to convert FIT files to TCX files ([fit2tcx.pl](https://metacpan.org/pod/fit2tcx.pl)), and a script to convert a locations file to GPX format ([locations2gpx.pl](https://metacpan.org/pod/locations2gpx.pl)).
 
-## Constructor Methods (class)
+## Constructor Methods
 
 - new()
 
     creates a new object and returns it.
+
+- clone()
+
+    Returns a copy of a `Geo::FIT` instance.
+
+    `clone()` is experimental and support for it may be removed at any time. Use with caution particularly if there are open filehandles, it which case it is recommended to `close()` before cloning.
+
+    It also does not return a full deep copy if any callbacks are registered, it creates a reference to them. There is no known way to make deep copies of anonymous subroutines in Perl (if you know of one, please make a pull request).
+
+    The main use for c&lt;clone()> is immediately after `new()`, and `file()`, to create a copy for later use.
 
 ## Class methods
 
@@ -50,7 +78,7 @@ The module also provides a script to read and print the contents of FIT files ([
 
 - profile\_version\_string()
 
-    returns a string representing the .FIT protocol version on which this class based.
+    returns a string representing the .FIT profile version on which this class based.
 
 ## Object methods
 
@@ -68,7 +96,7 @@ The module also provides a script to read and print the contents of FIT files ([
 
 - fetch()
 
-    reads a message in the .FIT file, and returns `1` on success, or `undef` on failure or EOF.
+    reads a message in the .FIT file, and returns `1` on success, or `undef` on failure or EOF. `fetch_header()` must have been called before the first attempt to `fetch()` after opening the file.
 
     If a data message callback is registered, `fetch()` will return the value returned by the callback. It is therefore important to define explicit return statements and values in any callback (this includes returning true if that is the desired outcome after `fetch()`).
 
@@ -104,17 +132,57 @@ The module also provides a script to read and print the contents of FIT files ([
 
     converts an array of character codes to a Perl string.
 
+- field\_list( _$descriptor_ )
+
+    Given a data message descriptor, returns the list of fields described in it.
+
+- field\_value( _$field_, _$descriptor_, _$values_ )
+
+    Returns the value the field named _$field_ (a string).
+
+    The other arguments consist of the data message descriptor (_$descriptor_, a hash reference) and the values fetched from a data message (_$values_, an array reference). These are simply the references passed to data message callbacks by `fetch()`, if any are registered, and are simply to be passed on to this method (please do not modifiy them).
+
+    For example, we can define and register a callback for `file_id` data messages and get the name of the manufacturer of the device that recorded the FIT file:
+
+        my $file_id_callback = sub {
+            my ($self, $descriptor, $values) = @_;
+            my $value = $self->field_value( 'manufacturer', $descriptor, $values );
+
+            print "The manufacturer is: ", $value, "\n"
+            };
+
+        $fit->data_message_callback_by_name('file_id', $file_id_callback ) or die $fit->error;
+
+        1 while ( $fit->fetch );
+
+- field\_value\_as\_read( _$field_, _$descriptor_, _$value_ \[, $type \] )
+
+    Convert the value parsed and returned by `field_value()` back to what it was when read from the FIT file and returns it.
+
+    This method is mostly for developers or if there is a particular need to inspect the data more closely, it should be seldomly used. Arguments are similar to `field_value()`, except for the last one, which should be a single value (not a reference) corresponding to the value the former method has or would return.
+
+    If _$value_ was obtained from a call to `named_type_value()` after having provided an explicit named type derived from `switch()`, that named type needs to be provided as a fourth argument.
+
+    As an example, we can obtain the actual value recorded in the FIT file for the manufacturer by adding these to the callback defined above:
+
+            my $as_read = $self->field_value_as_read( 'manufacturer', $descriptor, $value );
+            print "The manufacturer's value as recorded in the FIT file is: ", $as_read, "\n"
+
 - value\_cooked(_type name_, _field attributes table_, _invalid_, _value_)
+
+    This method is now deprecated and is no longer supported. Please use `field_value()` instead.
 
     converts _value_ to a (hopefully) human readable form.
 
 - value\_uncooked(_type name_, _field attributes table_, _invalid_, _value representation_)
 
+    This method is now deprecated and is no longer supported. Please use `field_value_as_read()` instead.
+
     converts a human readable representation of a datum to an original form.
 
 - use\_gmtime(_boolean_)
 
-    sets the flag which of GMT or local timezone is used for `date_time` type value conversion.
+    sets the flag which of GMT or local timezone is used for `date_time` type value conversion. Defaults to true.
 
 - unit\_table(_unit_ => _unit conversion table_)
 
@@ -123,7 +191,7 @@ The module also provides a script to read and print the contents of FIT files ([
 - semicircles\_to\_degree(_boolean_)
 - mps\_to\_kph(_boolean_)
 
-    wrapper methods of `unit_table()` method.
+    wrapper methods of `unit_table()` method. `semicircle_to_deg()` defaults to true.
 
 - close()
 
@@ -279,7 +347,7 @@ Please visit the project page at: [https://github.com/patjoly/geo-fit](https://g
 
 # VERSION
 
-1.07
+1.08
 
 # LICENSE AND COPYRIGHT
 
