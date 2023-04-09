@@ -13,13 +13,31 @@ Geo::FIT - Decode Garmin FIT files
 =head1 SYNOPSIS
 
     use Geo::FIT;
-    $fit = Geo::FIT->new();
-    $fit->file( $fname )
-    $fit->open;
-    $fit->fetch_header;
-    $fit->fetch;
-    $fit->data_message_callback_by_name( $message name,   \&callback_function [, \%callback_data, ... ] );
-    $fit->data_message_callback_by_num(  $message number, \&callback_function [, \%callback_data, ... ] );
+
+Create an instance, assign a FIT file to it, open it:
+
+    my $fit = Geo::FIT->new();
+    $fit->file( $fname );
+    $fit->open or die $fit->error;
+
+Register a callback to get some info on where we've been and when:
+
+    my $record_callback = sub {
+        my ($self, $descriptor, $values) = @_;
+
+        my $time= $self->field_value( 'timestamp',     $descriptor, $values );
+        my $lat = $self->field_value( 'position_lat',  $descriptor, $values );
+        my $lon = $self->field_value( 'position_long', $descriptor, $values );
+
+        print "Time was: ", join("\t", $time, $lat, $lon), "\n"
+        };
+
+    $fit->data_message_callback_by_name('record', $record_callback ) or die $fit->error;
+
+    my @header_things = $fit->fetch_header;
+
+    1 while ( $fit->fetch );
+
     $fit->close;
 
 =head1 DESCRIPTION
@@ -6665,6 +6683,11 @@ sub new {
     my $self = +{};
     bless $self, $class;
     $self->initialize(@_);
+
+    # defaults
+    $self->use_gmtime(1);
+    $self->semicircles_to_degree(1);
+    return $self
 }
 
 =over 4
@@ -8163,13 +8186,122 @@ sub value_unprocessed {
 
 =over 4
 
+=item field_list( I<$descriptor> )
+
+Given a data message descriptor, returns the list of fields described in it.
+
+=back
+
+=cut
+
+sub field_list {
+    my ($self, $desc) = @_;
+    croak "argument to field_list() does not look like a data descriptor hash" if ref $desc ne 'HASH';
+
+    my (@fields, @fields_sorted, @keys);
+    @keys   = grep /^\d+/, keys %$desc;
+    @fields = @$desc{ @keys };
+
+    for my $field (@fields) {           # sort for easy comparison with values aref passed to callbacks
+        my $index = $desc->{'i_' . $field} - 1;
+        $fields_sorted[$index ] = $field
+    }
+    return @fields_sorted
+}
+
+=over 4
+
+=item field_value( I<$field>, I<$descriptor>, I<$values> )
+
+Returns the value the field named I<$field> (a string).
+
+The other arguments consist of the data message descriptor (I<$descriptor>, a hash reference) and the values fetched from a data message (I<$values>, an array reference). These are simply the references passed to data message callbacks by C<fetch()>, if any are registered, and are simply to be passed on to this method (please do not modifiy them).
+
+For example, we can define and register a callback for C<file_id> data messages and get the name of the manufacturer of the device that recorded the FIT file:
+
+    my $file_id_callback = sub {
+        my ($self, $descriptor, $values) = @_;
+        my $value = $self->field_value( 'manufacturer', $descriptor, $values );
+
+        print "The manufacturer is: ", $value, "\n"
+        };
+
+    $fit->data_message_callback_by_name('file_id', $file_id_callback ) or die $fit->error;
+
+    1 while ( $fit->fetch );
+
+=back
+
+=cut
+
+sub field_value {
+    my ($self, $field_name, $descriptor, $values) = @_;
+
+    my @keys = map $_ . $field_name, qw( t_ a_ I_ );
+    my ($type_name, $attr, $invalid, $val) =
+                ( @{$descriptor}{ @keys }, $values->[ $descriptor->{'i_' . $field_name} ] );
+
+    my $value = $val;
+    if ($val != $invalid) {
+        if (defined $type_name) {
+            $value = $self->named_type_value($type_name, $val);
+            return $value if defined $value
+        }
+
+        if (ref $attr eq 'HASH') {
+            $value = $self->value_processed($val, $attr)
+        }
+    }
+    return $value
+}
+
+=over 4
+
+=item field_value_as_read( I<$field>, I<$descriptor>, I<$value> [, $type ] )
+
+Convert the value parsed and returned by C<field_value()> back to what it was when read from the FIT file and returns it.
+
+This method is mostly for developers or if there is a particular need to inspect the data more closely, it should be seldomly used. Arguments are similar to C<field_value()>, except for the last one, which should be a single value (not a reference) corresponding to the value the former method has or would return.
+
+If I<$value> was obtained from a call to C<named_type_value()> after having provided an explicit named type derived from C<switch()>, that named type needs to be provided as a fourth argument.
+
+As an example, we can obtain the actual value recorded in the FIT file for the manufacturer by adding these to the callback defined above:
+
+        my $as_read = $self->field_value_as_read( 'manufacturer', $descriptor, $value );
+        print "The manufacturer's value as recorded in the FIT file is: ", $as_read, "\n"
+
+=back
+
+=cut
+
+sub field_value_as_read {
+    my ($self, $field_name, $descriptor, $val, $type_name_switched) = @_;
+
+    my @keys = map $_ . $field_name, qw( t_ a_ I_ );
+    my ($type_name, $attr, $invalid) = ( @{$descriptor}{ @keys } );
+    $type_name = $type_name_switched if defined $type_name_switched;
+
+    my $value = $val;
+    if ($val !~ /^[-+]?\d+$/) {
+        if ($type_name ne '') {
+            my $value = $self->named_type_value($type_name, $val);
+            return $value if defined $value
+        }
+
+        if (ref $attr eq 'HASH') {
+            $value = $self->value_unprocessed($val, $attr)
+        }
+    }
+    return $value
+}
+
+=over 4
+
 =item value_cooked(I<type name>, I<field attributes table>, I<invalid>, I<value>)
 
+This method is now deprecated and is no longer supported. Please use C<field_value()> instead.
+
 converts I<value> to a (hopefully) human readable form.
-
-=item value_uncooked(I<type name>, I<field attributes table>, I<invalid>, I<value representation>)
-
-converts a human readable representation of a datum to an original form.
 
 =back
 
@@ -8194,6 +8326,18 @@ sub value_cooked {
         }
     }
 }
+
+=over 4
+
+=item value_uncooked(I<type name>, I<field attributes table>, I<invalid>, I<value representation>)
+
+This method is now deprecated and is no longer supported. Please use C<field_value_as_read()> instead.
+
+converts a human readable representation of a datum to an original form.
+
+=back
+
+=cut
 
 sub value_uncooked {
     my ($self, $tname, $attr, $invalid, $val) = @_;
@@ -8457,7 +8601,7 @@ sub print_all_json {
 
 =item use_gmtime(I<boolean>)
 
-sets the flag which of GMT or local timezone is used for C<date_time> type value conversion.
+sets the flag which of GMT or local timezone is used for C<date_time> type value conversion. Defaults to true.
 
 =back
 
@@ -8517,7 +8661,7 @@ sub without_unit {
 
 =item mps_to_kph(I<boolean>)
 
-wrapper methods of C<unit_table()> method.
+wrapper methods of C<unit_table()> method. C<semicircle_to_deg()> defaults to true.
 
 =back
 
