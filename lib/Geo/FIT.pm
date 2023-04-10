@@ -8213,7 +8213,7 @@ sub field_list {
 
 =item field_value( I<$field>, I<$descriptor>, I<$values> )
 
-Returns the value the field named I<$field> (a string).
+Returns the value of the field named I<$field> (a string).
 
 The other arguments consist of the data message descriptor (I<$descriptor>, a hash reference) and the values fetched from a data message (I<$values>, an array reference). These are simply the references passed to data message callbacks by C<fetch()>, if any are registered, and are simply to be passed on to this method (please do not modifiy them).
 
@@ -8235,64 +8235,86 @@ For example, we can define and register a callback for C<file_id> data messages 
 =cut
 
 sub field_value {
-    my ($self, $field_name, $descriptor, $values) = @_;
+    my ($self, $field_name, $descriptor, $values_aref) = @_;
 
     my @keys = map $_ . $field_name, qw( t_ a_ I_ );
-    my ($type_name, $attr, $invalid, $val) =
-                ( @{$descriptor}{ @keys }, $values->[ $descriptor->{'i_' . $field_name} ] );
+    my ($type_name, $attr, $invalid, $value) =
+                ( @{$descriptor}{ @keys }, $values_aref->[ $descriptor->{'i_' . $field_name} ] );
 
-    my $value = $val;
-    if ($val != $invalid) {
+    if (defined $attr->{switch}) {
+        my $t_attr = $self->switched($descriptor, $values_aref, $attr->{switch});
+        if (ref $t_attr eq 'HASH') {
+            $attr      = $t_attr;
+            $type_name = $attr->{type_name}
+        }
+    }
+
+    my $ret_val = $value;
+    if ($value != $invalid) {
         if (defined $type_name) {
-            $value = $self->named_type_value($type_name, $val);
-            return $value if defined $value
+            $ret_val = $self->named_type_value($type_name, $value);
+            return $ret_val if defined $ret_val
         }
 
         if (ref $attr eq 'HASH') {
-            $value = $self->value_processed($val, $attr)
+            $ret_val = $self->value_processed($value, $attr)
         }
     }
-    return $value
+    return $ret_val
 }
 
 =over 4
 
-=item field_value_as_read( I<$field>, I<$descriptor>, I<$value> [, $type ] )
+=item field_value_as_read( I<$field>, I<$descriptor>, I<$value> [, $type_name_or_aref ] )
 
-Convert the value parsed and returned by C<field_value()> back to what it was when read from the FIT file and returns it.
+Converts the value parsed and returned by C<field_value()> back to what it was when read from the FIT file and returns it.
 
-This method is mostly for developers or if there is a particular need to inspect the data more closely, it should be seldomly used. Arguments are similar to C<field_value()>, except for the last one, which should be a single value (not a reference) corresponding to the value the former method has or would return.
+This method is mostly for developers or if there is a particular need to inspect the data more closely, it should seldomly be used. Arguments are similar to C<field_value()> except that a single value I<$value> is passed instead of an array reference. That value corresponds to the value the former method has or would have returned.
 
-If I<$value> was obtained from a call to C<named_type_value()> after having provided an explicit named type derived from C<switch()>, that named type needs to be provided as a fourth argument.
-
-As an example, we can obtain the actual value recorded in the FIT file for the manufacturer by adding these to the callback defined above:
+As an example, we can obtain the actual value recorded in the FIT file for the manufacturer by adding these lines to the callback defined above:
 
         my $as_read = $self->field_value_as_read( 'manufacturer', $descriptor, $value );
         print "The manufacturer's value as recorded in the FIT file is: ", $as_read, "\n"
+
+The method will raise an exception if I<$value> would have been obtained by C<field_value()> via an internal call to C<switched()>. In that case, the type name or the original array reference of values that was passed to the callback must be provided as the last argument. Otherwise, there is no way to guess what the value read from the file may have been.
 
 =back
 
 =cut
 
 sub field_value_as_read {
-    my ($self, $field_name, $descriptor, $val, $type_name_switched) = @_;
+    my ($self, $field_name, $descriptor, $value, $optional_last_arg) = @_;
 
     my @keys = map $_ . $field_name, qw( t_ a_ I_ );
     my ($type_name, $attr, $invalid) = ( @{$descriptor}{ @keys } );
-    $type_name = $type_name_switched if defined $type_name_switched;
 
-    my $value = $val;
-    if ($val !~ /^[-+]?\d+$/) {
+    if (defined $attr->{switch}) {
+
+        my $croak_msg = 'this field\'s value was derived from a call to switched(), please provide as the ';
+        $croak_msg   .= 'last argument the type name or the array reference containing the original values';
+        croak $croak_msg unless defined $optional_last_arg;
+
+        if (ref $optional_last_arg eq 'ARRAY') {
+            my $t_attr = $self->switched($descriptor, $optional_last_arg, $attr->{switch});
+            if (ref $t_attr eq 'HASH') {
+                $attr      = $t_attr;
+                $type_name = $attr->{type_name}
+            }
+        } else { $type_name = $optional_last_arg }
+    }
+
+    my $ret_val = $value;
+    if ($value !~ /^[-+]?\d+$/) {
         if ($type_name ne '') {
-            my $value = $self->named_type_value($type_name, $val);
-            return $value if defined $value
+            my $ret_val = $self->named_type_value($type_name, $value);
+            return $ret_val if defined $ret_val
         }
 
         if (ref $attr eq 'HASH') {
-            $value = $self->value_unprocessed($val, $attr)
+            $ret_val = $self->value_unprocessed($value, $attr)
         }
     }
-    return $value
+    return $ret_val
 }
 
 =over 4
