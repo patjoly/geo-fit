@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 60;
+use Test::More tests => 112;
 use Geo::FIT;
 
 my $o = Geo::FIT->new();
@@ -186,8 +186,6 @@ my $cb_device_info = sub {
 my $cb_device_settings = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
-    # we have: active_time_zone, time_mode, time_zone_offset, backlight_mode (3), date_mode (1), lactate_threshold_autodetect_enabled (1),
-
     my  $utc_offset          = $obj->field_value( 'utc_offset', $desc, $values );
     is( $utc_offset,           0,               "   test field_value(): utc_offset in device_settings");
     my  $utc_offset_as_read  = $obj->field_value_as_read( 'utc_offset', $desc, $utc_offset );
@@ -237,6 +235,154 @@ my $cb_device_settings = sub {
     1
     };
 
+my $cb_user_profile = sub {
+    my ($obj, $desc, $values, $memo) = @_;
+
+    my  $friendly_name           = $obj->field_value( 'friendly_name', $desc, $values );
+    is( $friendly_name,            101,         "   test field_value(): friendly_name in user_profile");
+    my  $friendly_name_as_read   = $obj->field_value_as_read( 'friendly_name', $desc, $friendly_name );
+    is( $friendly_name_as_read,    101,         "   test field_value_as_read(): friendly_name in user_profile");
+
+    my  $wake_time               = $obj->field_value( 'wake_time', $desc, $values );
+    is( $wake_time,                21645,       "   test field_value(): wake_time in user_profile");
+    my  $wake_time_as_read       = $obj->field_value_as_read( 'wake_time', $desc, $wake_time );
+    is( $wake_time_as_read,        21645,       "   test field_value_as_read(): wake_time in user_profile");
+
+    my  $sleep_time              = $obj->field_value( 'sleep_time', $desc, $values );
+    is( $sleep_time,               79200,       "   test field_value(): sleep_time in user_profile");
+    my  $sleep_time_as_read      = $obj->field_value_as_read( 'sleep_time', $desc, $sleep_time );
+    is( $sleep_time_as_read,       79200,       "   test field_value_as_read(): sleep_time in user_profile");
+
+    my  $weight                  = $obj->field_value( 'weight', $desc, $values );
+    is( $weight,                   86.2,        "   test field_value(): weight in user_profile");
+    my  $weight_as_read          = $obj->field_value_as_read( 'weight', $desc, $weight );
+    is( $weight_as_read,           862,         "   test field_value_as_read(): weight in user_profile");
+
+    my  $height                  = $obj->field_value( 'height', $desc, $values );
+    is( $height,                   1.78,        "   test field_value(): height in user_profile");
+    my  $height_as_read          = $obj->field_value_as_read( 'height', $desc, $height );
+    is( $height_as_read,           178,         "   test field_value_as_read(): height in user_profile");
+
+    my  $language                = $obj->field_value( 'language', $desc, $values );
+    is( $language,                 'french',    "   test field_value(): language in user_profile");
+    my  $language_as_read  =       $obj->field_value_as_read( 'language', $desc, $language );
+    is( $language_as_read,         1,           "   test field_value_as_read(): language in user_profile");
+
+    my  $elev_setting            = $obj->field_value( 'elev_setting', $desc, $values );
+    is( $elev_setting,             'metric',    "   test field_value(): elev_setting in user_profile");
+    my  $elev_setting_as_read    = $obj->field_value_as_read( 'elev_setting', $desc, $elev_setting );
+    is( $elev_setting_as_read,     0,           "   test field_value_as_read(): elev_setting in user_profile");
+
+    my  $weight_setting          = $obj->field_value( 'weight_setting', $desc, $values );
+    is( $weight_setting,           'statute',   "   test field_value(): weight_setting in user_profile");
+    my  $weight_setting_as_read  = $obj->field_value_as_read( 'weight_setting', $desc, $weight_setting );
+    is( $weight_setting_as_read,   1,           "   test field_value_as_read(): weight_setting in user_profile");
+
+    my  $resting_heart_rate                     = $obj->field_value( 'resting_heart_rate', $desc, $values );
+    is( $resting_heart_rate,                      0,       "   test field_value(): resting_heart_rate in user_profile");
+    my  $resting_heart_rate_as_read             = $obj->field_value_as_read( 'resting_heart_rate', $desc, $resting_heart_rate );
+    is( $resting_heart_rate_as_read,              0,       "   test field_value_as_read(): resting_heart_rate in user_profile");
+
+    my  $default_max_biking_heart_rate          = $obj->field_value( 'default_max_biking_heart_rate', $desc, $values );
+    is( $default_max_biking_heart_rate,           185,     "   test field_value(): default_max_biking_heart_rate in user_profile");
+    my  $default_max_biking_heart_rate_as_read  = $obj->field_value_as_read( 'default_max_biking_heart_rate', $desc, $default_max_biking_heart_rate );
+    is( $default_max_biking_heart_rate_as_read,   185,     "   test field_value_as_read(): default_max_biking_heart_rate in user_profile");
+
+    my  $default_max_heart_rate                 = $obj->field_value( 'default_max_heart_rate', $desc, $values );
+    is( $default_max_heart_rate,                  185,     "   test field_value(): default_max_heart_rate in user_profile");
+    my  $default_max_heart_rate_as_read         = $obj->field_value_as_read( 'default_max_heart_rate', $desc, $default_max_heart_rate );
+    is( $default_max_heart_rate_as_read,          185,     "   test field_value_as_read(): default_max_heart_rate in user_profile");
+
+    my  $hr_setting                   = $obj->field_value( 'hr_setting', $desc, $values );
+    is( $hr_setting,                    'max',  "   test field_value(): hr_setting in user_profile");
+    my  $hr_setting_as_read           = $obj->field_value_as_read( 'hr_setting', $desc, $hr_setting );
+    is( $hr_setting_as_read,            1,      "   test field_value_as_read(): hr_setting in user_profile");
+
+    my  $speed_setting                = $obj->field_value( 'speed_setting', $desc, $values );
+    is( $speed_setting,                 'metric',   "   test field_value(): speed_setting in user_profile");
+    my  $speed_setting_as_read        = $obj->field_value_as_read( 'speed_setting', $desc, $speed_setting );
+    is( $speed_setting_as_read,         0,          "   test field_value_as_read(): speed_setting in user_profile");
+
+    my  $dist_setting                 = $obj->field_value( 'dist_setting', $desc, $values );
+    is( $dist_setting,                  'metric',   "   test field_value(): dist_setting in user_profile");
+    my  $dist_setting_as_read         = $obj->field_value_as_read( 'dist_setting', $desc, $dist_setting );
+    is( $dist_setting_as_read,          0,          "   test field_value_as_read(): dist_setting in user_profile");
+
+    my  $power_setting                = $obj->field_value( 'power_setting', $desc, $values );
+    is( $power_setting,                 'percent_ftp',  "   test field_value(): power_setting in user_profile");
+    my  $power_setting_as_read        = $obj->field_value_as_read( 'power_setting', $desc, $power_setting );
+    is( $power_setting_as_read,         1,              "   test field_value_as_read(): power_setting in user_profile");
+
+    my  $activity_class               = $obj->field_value( 'activity_class', $desc, $values );
+    is( $activity_class,                'athlete=0,level=40,level_max=32',       "   test field_value(): activity_class in user_profile");
+    my  $activity_class_as_read       = $obj->field_value_as_read( 'activity_class', $desc, $activity_class );
+    is( $activity_class_as_read,        40,     "   test field_value_as_read(): activity_class in user_profile");
+
+    my  $position_setting             = $obj->field_value( 'position_setting', $desc, $values );
+    is( $position_setting,              'degree_minute',       "   test field_value(): position_setting in user_profile");
+    my  $position_setting_as_read     = $obj->field_value_as_read( 'position_setting', $desc, $position_setting );
+    is( $position_setting_as_read,      1,      "   test field_value_as_read(): position_setting in user_profile");
+
+    my  $temperature_setting          = $obj->field_value( 'temperature_setting', $desc, $values );
+    is( $temperature_setting,           'metric',   "   test field_value(): temperature_setting in user_profile");
+    my  $temperature_setting_as_read  = $obj->field_value_as_read( 'temperature_setting', $desc, $temperature_setting );
+    is( $temperature_setting_as_read,   0,          "   test field_value_as_read(): temperature_setting in user_profile");
+
+    my  $height_setting               = $obj->field_value( 'height_setting', $desc, $values );
+    is( $height_setting,                'statute',  "   test field_value(): height_setting in user_profile");
+    my  $height_setting_as_read       = $obj->field_value_as_read( 'height_setting', $desc, $height_setting );
+    is( $height_setting_as_read,        1,          "   test field_value_as_read(): height_setting in user_profile");
+
+    1
+    };
+
+my $cb_sport = sub {
+    my ($obj, $desc, $values, $memo) = @_;
+
+    my  $sport              = $obj->field_value( 'sport', $desc, $values );
+    is( $sport,               'cycling',        "   test field_value(): sport in sport");
+    my  $sport_as_read      = $obj->field_value_as_read( 'sport', $desc, $sport );
+    is( $sport_as_read,       2,                "   test field_value_as_read(): sport in sport");
+
+    my  $sub_sport          = $obj->field_value( 'sub_sport', $desc, $values );
+    is( $sub_sport,           'mountain',       "   test field_value(): sub_sport in sport");
+    my  $sub_sport_as_read  = $obj->field_value_as_read( 'sub_sport', $desc, $sub_sport );
+    is( $sub_sport_as_read,   8,                "   test field_value_as_read(): sub_sport in sport");
+
+    my  $name               = $obj->field_value( 'name', $desc, $values );
+    is( $name,                77,               "   test field_value(): name in sport");
+    my  $name_as_read       = $obj->field_value_as_read( 'name', $desc, $name );
+    is( $name_as_read,        77,               "   test field_value_as_read(): name in sport");
+
+    1
+    };
+
+my $cb_zones_target = sub {
+    my ($obj, $desc, $values, $memo) = @_;
+
+    my  $functional_threshold_power          = $obj->field_value( 'functional_threshold_power', $desc, $values );
+    is( $functional_threshold_power,           200,     "   test field_value(): functional_threshold_power in zones_target");
+    my  $functional_threshold_power_as_read  = $obj->field_value_as_read( 'functional_threshold_power', $desc, $functional_threshold_power );
+    is( $functional_threshold_power_as_read,   200,     "   test field_value_as_read(): functional_threshold_power in zones_target");
+
+    my  $threshold_heart_rate                = $obj->field_value( 'threshold_heart_rate', $desc, $values );
+    is( $threshold_heart_rate,                 0,       "   test field_value(): threshold_heart_rate in zones_target");
+    my  $threshold_heart_rate_as_read        = $obj->field_value_as_read( 'threshold_heart_rate', $desc, $threshold_heart_rate );
+    is( $threshold_heart_rate_as_read,         0,       "   test field_value_as_read(): threshold_heart_rate in zones_target");
+
+    my  $hr_calc_type           = $obj->field_value( 'hr_calc_type', $desc, $values );
+    is( $hr_calc_type,            'percent_max_hr', "   test field_value(): hr_calc_type in zones_target");
+    my  $hr_calc_type_as_read   = $obj->field_value_as_read( 'hr_calc_type', $desc, $hr_calc_type );
+    is( $hr_calc_type_as_read,    1,                "   test field_value_as_read(): hr_calc_type in zones_target");
+
+    my  $pwr_calc_type          = $obj->field_value( 'pwr_calc_type', $desc, $values );
+    is( $pwr_calc_type,           1,                "   test field_value(): pwr_calc_type in zones_target");
+    my  $pwr_calc_type_as_read  = $obj->field_value_as_read( 'pwr_calc_type', $desc, $pwr_calc_type );
+    is( $pwr_calc_type_as_read,   1,                "   test field_value_as_read(): pwr_calc_type in zones_target");
+
+    1
+    };
+
 my $memo = { 'tpv' => [], 'trackv' => [], 'lapv' => [], 'av' => [] };
 
 $o->data_message_callback_by_name('file_id',            $cb_file_id,            $memo) or die $o->error;
@@ -244,7 +390,10 @@ $o->data_message_callback_by_name('file_creator',       $cb_file_creator,       
 $o->data_message_callback_by_name('event',              $cb_event,              $memo) or die $o->error;
 $o->data_message_callback_by_name('device_info',        $cb_device_info,        $memo) or die $o->error;
 $o->data_message_callback_by_name('device_settings',    $cb_device_settings,    $memo) or die $o->error;
-# TODO: need callbacks and tests for: user_profile, sport, zones_target
+$o->data_message_callback_by_name('user_profile',       $cb_user_profile,       $memo) or die $o->error;
+$o->data_message_callback_by_name('sport',              $cb_sport,              $memo) or die $o->error;
+$o->data_message_callback_by_name('zones_target',       $cb_zones_target,       $memo) or die $o->error;
+# TODO: need callbacks and tests for: sport, zones_target
 # my @f = $obj->field_list( $desc );
 
 #
