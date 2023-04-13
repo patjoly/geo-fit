@@ -6716,84 +6716,6 @@ sub clone {
 
 =over 4
 
-=item message_name(I<message spec>)
-
-returns the message name for I<message spec> or undef.
-
-=item message_number(I<message spec>)
-
-returns the message number for I<message spec> or undef.
-
-=back
-
-=cut
-
-sub message_name {
-    my ($self, $mspec) = @_;
-    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
-
-    if (ref $msgtype eq 'HASH') {
-        $msgtype->{_name};
-    } else {
-        undef;
-    }
-}
-
-sub message_number {
-    my ($self, $mspec) = @_;
-    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
-
-    if (ref $msgtype eq 'HASH') {
-        $msgtype->{_number};
-    } else {
-        undef;
-    }
-}
-
-=over 4
-
-=item field_name(I<message spec>, I<field spec>)
-
-returns the field name for I<field spec> in I<message spec> or undef.
-
-=item field_number(I<message spec>, I<field spec>)
-
-returns the field index for I<field spec> in I<message spec> or undef.
-
-=back
-
-=cut
-
-sub field_name {
-    my ($self, $mspec, $fspec) = @_;
-    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
-
-    if (ref $msgtype eq 'HASH') {
-        my $flddesc = $msgtype->{$fspec};
-        ref $flddesc eq 'HASH'
-            and return $flddesc->{name};
-    }
-    undef;
-}
-
-sub field_number {
-    my ($self, $mspec, $fspec) = @_;
-    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
-
-    if (ref $msgtype eq 'HASH') {
-        my $flddesc = $msgtype->{$fspec};
-        ref $flddesc eq 'HASH'
-            and return $flddesc->{number};
-    }
-    undef;
-}
-
-=over 4
-
-=item protocol_version_string()
-
-returns a string representing the .FIT protocol version on which this class based.
-
 =item profile_version_string()
 
 returns a string representing the .FIT profile version on which this class based.
@@ -6803,7 +6725,8 @@ returns a string representing the .FIT profile version on which this class based
 =cut
 
 my $profile_current  = '21.107';
-my $protocol_current = '2.3';       # is there such a thing as current protocol?
+my $protocol_current = '2.3';       # is there such a thing as current protocol for the class?
+                                    # don't think so, pod was removed for protocol_* above
 
 my $protocol_version_major_shift = 4;
 my $protocol_version_minor_mask  = (1 << $protocol_version_major_shift) - 1;
@@ -7633,7 +7556,7 @@ sub syscallback_devdata_field_desc {
         $emsg = "field_name is not a non-empty string";
         $warn = 1;
     } else {
-        $o_name = $self->string_value($v, $i_field_name, $c_field_name);
+        $o_name = _string_value($v, $i_field_name, $c_field_name);
     }
 
     if ($emsg ne '') {
@@ -7725,7 +7648,7 @@ sub syscallback_devdata_field_desc {
             my $c_aname = 'c_' . $aname;
 
             if ($desc->{$T_aname} == FIT_STRING) {
-                $fdesc{$aname} = $self->string_value($v, $i, $desc->{$c_aname});
+                $fdesc{$aname} = _string_value($v, $i, $desc->{$c_aname});
             } elsif ($v->[$i] != $desc->{$I_aname}) {
                 $fdesc{$aname} = $v->[$i];
             }
@@ -8087,18 +8010,8 @@ sub switched {
     $attr;
 }
 
-=over 4
-
-=item string_value(I<array of values>, I<offset in the array>, I<counts>)
-
-converts an array of character codes to a Perl string.
-
-=back
-
-=cut
-
-sub string_value {
-    my ($self, $v, $i, $n) = @_;
+sub _string_value {
+    my ($v, $i, $n) = @_;           # array of values, offset, count
     my $j;
 
     for ($j = 0 ; $j < $n ; ++$j) {
@@ -8127,10 +8040,10 @@ sub value_processed {
                     $scale += $scale1;
                 }
                 $num -= $offset1 if $offset1;
-                $unit = $unit1 if $unit1 ne '';
+                $unit = $unit1   if defined $unit1
             }
 
-            if ($scale > 0) {
+            if (defined $scale and $scale > 0) {
                 my $below_pt = int(log($scale + 9) / log(10));
 
                 if ($self->without_unit) {
@@ -8161,15 +8074,15 @@ sub value_unprocessed {
         my ($unit, $offset, $scale) = @{$attr}{qw(unit offset scale)};
         my $num = $str;
 
-        if ($unit ne '') {
+        if (defined $unit) {
             my $unit_tab = $self->unit_table($unit);
 
             if (ref $unit_tab eq 'HASH') {
                 my ($unit1, $offset1, $scale1) = @{$unit_tab}{qw(unit offset scale)};
 
-                $scale += $scale1 if $scale1 > 0;
+                $scale  += $scale1  if $scale1 > 0;
                 $offset += $offset1 if $offset1;
-                $unit = $unit1 if $unit1 ne '';
+                $unit    = $unit1   if defined $unit1
             }
 
             length($num) >= length($unit) && substr($num, -length($unit)) eq $unit
@@ -8305,7 +8218,7 @@ sub field_value_as_read {
 
     my $ret_val = $value;
     if ($value !~ /^[-+]?\d+$/) {
-        if ($type_name ne '') {
+        if (defined $type_name ) {
             my $ret_val = $self->named_type_value($type_name, $value);
             return $ret_val if defined $ret_val
         }
@@ -8512,7 +8425,7 @@ sub print_all_fields {
             $fh->print('): ');
 
             if ($type == FIT_STRING) {
-                $fh->print("\"", $self->string_value($v, $i, $c), "\"\n");
+                $fh->print("\"", _string_value($v, $i, $c), "\"\n");
             } else {
                 $fh->print('{') if $c > 1;
 
@@ -8585,7 +8498,7 @@ sub print_all_json {
             $fh->print($indent, '"', $pname, '": ');
 
             if ($type == FIT_STRING) {
-                $fh->print("\"", $self->string_value($v, $i, $c), "\"");
+                $fh->print("\"", _string_value($v, $i, $c), "\"");
             } else {
                 $fh->print('[') if $c > 1;
 
@@ -8724,6 +8637,84 @@ Returns a string representation of the profile version used by the device or app
 C<< fetch_header() >> must have been called at least once for this method to be able to return a value, will raise an exception otherwise.
 
 =back
+
+=head2 Functions
+
+The following functions are provided. None are exported, they may be called as C<< Geo::FIT::message_name(20) >>, C<< Geo::FIT::field_name('device_info', 4) >> C<< Geo::FIT::field_number('device_info', 'product') >>, etc.
+
+=over 4
+
+=item message_name(I<message spec>)
+
+returns the message name for I<message spec> or undef.
+
+=item message_number(I<message spec>)
+
+returns the message number for I<message spec> or undef.
+
+=back
+
+=cut
+
+sub message_name {
+    my $mspec = shift;
+    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
+
+    if (ref $msgtype eq 'HASH') {
+        $msgtype->{_name};
+    } else {
+        undef;
+    }
+}
+
+sub message_number {
+    my $mspec = shift;
+    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
+
+    if (ref $msgtype eq 'HASH') {
+        $msgtype->{_number};
+    } else {
+        undef;
+    }
+}
+
+=over 4
+
+=item field_name(I<message spec>, I<field spec>)
+
+returns the field name for I<field spec> in I<message spec> or undef.
+
+=item field_number(I<message spec>, I<field spec>)
+
+returns the field index for I<field spec> in I<message spec> or undef.
+
+=back
+
+=cut
+
+sub field_name {
+    my ($mspec, $fspec) = @_;
+    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
+
+    if (ref $msgtype eq 'HASH') {
+        my $flddesc = $msgtype->{$fspec};
+        ref $flddesc eq 'HASH'
+            and return $flddesc->{name};
+    }
+    undef;
+}
+
+sub field_number {
+    my ($mspec, $fspec) = @_;
+    my $msgtype = $mspec =~ /^\d+$/ ? $msgtype_by_num{$mspec} : $msgtype_by_name{$mspec};
+
+    if (ref $msgtype eq 'HASH') {
+        my $flddesc = $msgtype->{$fspec};
+        ref $flddesc eq 'HASH'
+            and return $flddesc->{number};
+    }
+    undef;
+}
 
 =head2 Constants
 

@@ -168,7 +168,7 @@ sub _message {
         }
         if ($j < $c) { # skip invalid
             if ($type == FIT_STRING) {
-                $msg->{$pname} = $fit->string_value($v, $i, $c)
+                $msg->{$pname} = Geo::FIT::_string_value($v, $i, $c)
             }
             else {
                 # return only the first value if array
