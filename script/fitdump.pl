@@ -26,7 +26,7 @@ C<fitdump.pl> reads the contents of the Garmin FIT files specified on command li
 use Geo::FIT;
 use Getopt::Long;
 
-my ($mps_to_kph, $semicircles_to_deg, $use_gmtime, $maybe_chained, $force, $version, $help) = (1, 1, 0, 0, 0, 0, 0);
+my ($mps_to_kph, $semicircles_to_deg, $use_gmtime, $maybe_chained, $force, $version, $help) = (1, 1, 1, 0, 0, 0, 0);
 sub usage { "Usage: $0 [ --help --version --mps_to_kph=\$boole --semicircles_to_deg=\$boole --use_gmtime=\$boole --maybe_chained=\$boole --force ] \$input_file [ \$output_file ]\n" }
 
 GetOptions( "mps_to_kph=i"          =>  \$mps_to_kph,
@@ -161,7 +161,7 @@ fetch_from( $input_file, $fh );
 
 =item C<--use_gmtime=($boolean)>
 
-Options corresponding to object methods in L<Geo::FIT>. The first two default to true, C<-use_gmtime> to false.
+Options corresponding to object methods in L<Geo::FIT>. All of the above default to true.
 
 =item C<--$maybe_chained=($boolean)>
 
