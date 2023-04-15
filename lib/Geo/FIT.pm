@@ -8080,7 +8080,7 @@ sub value_unprocessed {
             if (ref $unit_tab eq 'HASH') {
                 my ($unit1, $offset1, $scale1) = @{$unit_tab}{qw(unit offset scale)};
 
-                $scale  += $scale1  if $scale1 > 0;
+                $scale  += $scale1  if defined $scale1 and $scale1 > 0;
                 $offset += $offset1 if $offset1;
                 $unit    = $unit1   if defined $unit1
             }
@@ -8090,7 +8090,7 @@ sub value_unprocessed {
         }
 
         $num += $offset if $offset;
-        $num *= $scale if $scale > 0;
+        $num *= $scale  if defined $scale and $scale > 0;
         $num;
     } else {
         $str;

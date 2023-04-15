@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 77;
+use Test::More tests => 78;
 use Geo::FIT;
 use File::Temp qw/ tempfile tempdir /;
 
@@ -106,12 +106,17 @@ $o->close();
 is( $i, 17,  "   test that we fetched the expected total number of descriptors");
 
 #
-# Test errors
+# Test clone()
 
 $o = Geo::FIT->new();
 isa_ok($o, 'Geo::FIT');
 $o->file( 't/10004793344_ACTIVITY.fit' );
 my $c = $o->clone;
+isa_ok($c, 'Geo::FIT');
+
+#
+# Test errors
+
 $o->open();
 my @header_things = $o->fetch_header;
 my $ret_val;
@@ -120,7 +125,6 @@ delete $o->{data_message_descriptor}[0];
 $ret_val = $o->fetch;        # should encounter an error since no descriptor for the local message type
 is( $ret_val, undef,  "   test_fetch() -- should encounter error and return undef, not croak");
 $o->close();
-
 
 my $callback_die_on_error = sub {
     my $self = shift;
