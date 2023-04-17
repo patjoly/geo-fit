@@ -6823,6 +6823,7 @@ for ($i = 0 ; $i < 2 ** 8 ; ++$i) {
     $crc_table[$i] = $r;
 }
 
+# delete
 sub dump {
     my ($self, $s, $fh) = @_;
     my ($i, $d);
@@ -6831,10 +6832,13 @@ sub dump {
     }
 }
 
+# delete
 sub safe_isa {
     eval {$_[0]->isa($_[1])};
 }
 
+# make internal
+# move to a section on internal accessors
 sub file_read {
     my $self = shift;
     if (@_) {
@@ -6844,6 +6848,8 @@ sub file_read {
     }
 }
 
+# make internal (or add POD)
+# move to a section on internal accessors (or to object methods)
 sub file_size {
     my $self = shift;
     if (@_) {
@@ -6853,6 +6859,8 @@ sub file_size {
     }
 }
 
+# make internal (or add POD)
+# move to a section on internal accessors (or to object methods)
 sub file_processed {
     my $self = shift;
     if (@_) {
@@ -6862,6 +6870,8 @@ sub file_processed {
     }
 }
 
+# make internal
+# move to a section on internal accessors
 sub offset {
     my $self = shift;
     if (@_) {
@@ -6871,6 +6881,8 @@ sub offset {
     }
 }
 
+# make internal
+# move to a section on internal accessors
 sub buffer {
     my $self = shift;
     if (@_) {
@@ -6880,6 +6892,8 @@ sub buffer {
     }
 }
 
+# make internal
+# move to a section on internal accessors
 sub maybe_chained {
     my $self = shift;
     if (@_) {
@@ -6889,6 +6903,8 @@ sub maybe_chained {
     }
 }
 
+# make internal
+# move to a section on internal methods
 sub clear_buffer {
     my $self = shift;
     if ($self->offset > 0) {
@@ -6905,9 +6921,9 @@ sub clear_buffer {
 
 =over 4
 
-=item file(I<file name>)
+=item file( $filename )
 
-sets the name I<file name> of a .FIT file.
+returns the name of a .FIT file. Sets the name to I<$filename> if called with an argument (raises an exception if the file does not exist).
 
 =back
 
@@ -6916,10 +6932,11 @@ sets the name I<file name> of a .FIT file.
 sub file {
     my $self = shift;
     if (@_) {
-        $self->{file} = $_[0];
-    } else {
-        $self->{file};
+        my $fname = $_[0];
+        croak "file $fname specified in file() does not exist: $!" unless -f $fname;
+        $self->{file} = $fname
     }
+    return $self->{file}
 }
 
 =over 4
@@ -6953,6 +6970,8 @@ sub open {
     }
 }
 
+# make internal
+# move to a section on internal accessors
 sub fh {
     my $self = shift;
     if (@_) {
@@ -6962,6 +6981,8 @@ sub fh {
     }
 }
 
+# make internal
+# move to a section on internal accessors
 sub EOF {
     my $self = shift;
     if (@_) {
@@ -6971,6 +6992,8 @@ sub EOF {
     }
 }
 
+# make internal
+# move to a section on internal accessors
 sub end_of_chunk {
     my $self = shift;
     if (@_) {
@@ -6980,6 +7003,8 @@ sub end_of_chunk {
     }
 }
 
+# make internal
+# move to a section on internal functions
 sub fill_buffer {
     my $self = shift;
     my $buffer = $self->buffer;
@@ -7011,6 +7036,7 @@ sub fill_buffer {
     return 1
 }
 
+# move to a section on internal functions
 sub _buffer_needs_updating {
     my ($self, $bytes_needed) = @_;
     my ($buffer, $offset) = ($self->buffer, $self->offset);     # easier to debug with variables
@@ -8099,28 +8125,53 @@ sub value_unprocessed {
 
 =over 4
 
-=item field_list( I<$descriptor> )
+=item fields_list( $descriptor [, keep_unknown => $boole )
 
-Given a data message descriptor, returns the list of fields described in it.
+Given a data message descriptor (I<$descriptor>), returns the list of fields described in it. If C<keep_unknown> is set to true, unknown field names will also be listed.
 
 =back
 
 =cut
 
-sub field_list {
-    my ($self, $desc) = @_;
-    croak "argument to field_list() does not look like a data descriptor hash" if ref $desc ne 'HASH';
+sub fields_list {
+    my ($self, $desc) = (shift, shift);
+    my %opts = @_;
+    croak "argument to fields_list() does not look like a data descriptor hash" if ref $desc ne 'HASH';
 
-    my (@fields, @fields_sorted, @keys);
-    @keys   = grep /^\d+/, keys %$desc;
-    @fields = @$desc{ @keys };
+    my (@keys, %fields, @fields_sorted);
+    @keys = grep /^i_/, keys %$desc;
+    @keys = grep !/^i_unknown/, @keys unless $opts{keep_unknown};
+    %fields = %$desc{ @keys };
 
-    for my $field (@fields) {           # sort for easy comparison with values aref passed to callbacks
-        my $index = $desc->{'i_' . $field} - 1;
-        $fields_sorted[$index ] = $field
-    }
+    # sort for easy comparison with values aref passed to callbacks
+    @fields_sorted = sort { $fields{$a} <=> $fields{$b} } keys %fields;
+    map s/^i_//, @fields_sorted;
     return @fields_sorted
 }
+
+=over 4
+
+=item fields_defined( $descriptor, $values )
+
+Given a data message descriptor (I<$descriptor>) and a corresponding data array reference of values (I<$values>), returns the list of fields whose value is defined. Unknow field names are never listed.
+
+=back
+
+=cut
+
+sub fields_defined {
+    my ($self, $descriptor, $values) = @_;
+
+    my @fields = $self->fields_list( $descriptor );
+
+    my @defined;
+    for my $field (@fields) {
+        my $index = $descriptor->{ 'i_' . $field };
+        push @defined, $field if $values->[ $index ] != $descriptor->{'I_' . $field}
+    }
+    return @defined
+}
+
 
 =over 4
 
@@ -8418,7 +8469,9 @@ sub print_all_fields {
         }
 
         if ($j < $c || !$skip_invalid) {
-            $self->last_timestamp($v->[$i]) if $type == FIT_UINT32 && $tname eq 'date_time' && $pname eq 'timestamp';
+            if (defined $tname) {
+                $self->last_timestamp($v->[$i]) if $type == FIT_UINT32 && $tname eq 'date_time' && $pname eq 'timestamp';
+            }
             $fh->print($indent, $pname, ' (', $desc->{'N_' . $name}, '-', $c, '-', $type_name[$type] ne '' ? $type_name[$type] : $type);
             $fh->print(', original name: ', $name) if $name ne $pname;
             $fh->print(', INVALID') if $j >= $c;

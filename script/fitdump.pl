@@ -50,9 +50,6 @@ if (@ARGV) {
     @ARGV and $output_file = shift @ARGV
 }
 
-# disable warnings until I resolve them all, will soon delete this
-local $SIG{__WARN__} = sub { };
-
 my $fh;
 if ($output_file) {
     if (-f $output_file) {
@@ -64,13 +61,13 @@ if ($output_file) {
 sub dump_it {
     my ($self, $desc, $v, $o_cbmap) = @_;
 
-    if ($desc->{message_name} ne '') {
+    if (defined $desc->{message_name}) {
         my $o_cb = $o_cbmap->{$desc->{message_name}};
         ref $o_cb eq 'ARRAY' and ref $o_cb->[0] eq 'CODE' and $o_cb->[0]->($self, $desc, $v, @$o_cb[1 .. $#$o_cb])
     }
 
     print "Local message type: $desc->{local_message_type} ($desc->{message_length} octets";
-    print ", message name: $desc->{message_name}" if $desc->{message_name} ne '';
+    print ", message name: $desc->{message_name}" if defined $desc->{message_name};
     print ", message number: $desc->{message_number})\n";
     $self->print_all_fields($desc, $v, indent => '  ')
 }
@@ -142,7 +139,7 @@ sub fetch_from {
             $chained = 1
         } else {
             my $garbage_size = $obj->trailing_garbages;
-            print "Trailing $garbage_size octets garbages skipped\n" if $garbage_size > 0;
+            print "Trailing $garbage_size octets garbages skipped\n" if defined $garbage_size and $garbage_size > 0;
             last
         }
     }

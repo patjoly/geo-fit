@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 279;
+use Test::More tests => 282;
 use Geo::FIT;
 
 my $o = Geo::FIT->new();
@@ -24,10 +24,15 @@ my @must = ('Time');
 my $cb_file_id = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
-    # test field_list() -- we know the 'file_id' data message occurs just once, so proper place here to test field_list() once
-    my @field_list = $obj->field_list( $desc );
-    my @field_list_exp = qw( serial_number time_created unknown7 manufacturer product number type );
-    is_deeply( \@field_list, \@field_list_exp,  "   test field_list()");
+    # test fields_list()
+    my @fields_list = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( serial_number time_created manufacturer product number type );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( serial_number time_created manufacturer product type );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     # test switched() and named_type_value() -- field_value() also calls both of these as required, so also tested indirectly
     my ($type_name, $attr, $inval, $id) = (@{$desc}{ qw(t_product a_product I_product) }, $values->[ $desc->{i_product} ]);
@@ -76,6 +81,13 @@ my $cb_file_id = sub {
 
 my $cb_file_creator = sub {
     my ($obj, $desc, $values, $memo) = @_;
+
+    # test fields_list()
+    my @fields_list = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( xxx2 software_version hardware_version );
+    is_deeply( \@fields_list, \@fields_list_exp,  "   test fields_list()");
+
+    my @fields_defined = $obj->fields_defined( $desc, $values );
 
     my  $software_version    = $obj->field_value( 'software_version', $desc, $values );
     is( $software_version,     950,             "   test field_value(): software_version in file_creator");
@@ -190,6 +202,13 @@ my $cb_device_info = sub {
 
 my $cb_device_settings = sub {
     my ($obj, $desc, $values, $memo) = @_;
+
+    # test fields_list()
+    my @fields_list = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( utc_offset time_offset autosync_min_time active_time_zone time_mode time_zone_offset backlight_mode date_mode xxx77 lactate_threshold_autodetect_enabled xxx91 number_of_screens xxx106 xxx109 xxx110 xxx111 xxx121 xxx144 xxx170 xxx173 );
+    is_deeply( \@fields_list, \@fields_list_exp,  "   test fields_list()");
+
+    my @fields_defined = $obj->fields_defined( $desc, $values );
 
     my  $utc_offset          = $obj->field_value( 'utc_offset', $desc, $values );
     is( $utc_offset,           0,               "   test field_value(): utc_offset in device_settings");
@@ -776,7 +795,7 @@ $o->data_message_callback_by_name('zones_target',       $cb_zones_target,       
 $o->data_message_callback_by_name('lap',                $cb_lap,                $memo) or die $o->error;
 $o->data_message_callback_by_name('session',            $cb_session,            $memo) or die $o->error;
 $o->data_message_callback_by_name('activity',           $cb_activity,           $memo) or die $o->error;
-# my @f = $obj->field_list( $desc );
+# my @f = $obj->fields_list( $desc );
 
 #
 # A - test field_value(), field_value_as_read(), named_type_value() and switched() with the above callbacks
