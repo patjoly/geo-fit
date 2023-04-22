@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 282;
+use Test::More tests => 318;
 use Geo::FIT;
 
 my $o = Geo::FIT->new();
@@ -25,12 +25,12 @@ my $cb_file_id = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
     # test fields_list()
-    my @fields_list = $obj->fields_list( $desc );
+    my @fields_list     = $obj->fields_list( $desc );
     my @fields_list_exp = qw( serial_number time_created manufacturer product number type );
     is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
 
     # test fields_defined()
-    my @fields_defined = $obj->fields_defined( $desc, $values );
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
     my @fields_defined_exp = qw( serial_number time_created manufacturer product type );
     is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
@@ -76,6 +76,7 @@ my $cb_file_id = sub {
 
     # my $product_as_read = $obj->field_value_as_read( 'product', $desc, $product );
     # ... that one should croak
+
     1
     };
 
@@ -83,14 +84,18 @@ my $cb_file_creator = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
     # test fields_list()
-    my @fields_list = $obj->fields_list( $desc );
+    my @fields_list     = $obj->fields_list( $desc );
     my @fields_list_exp = qw( xxx2 software_version hardware_version );
-    is_deeply( \@fields_list, \@fields_list_exp,  "   test fields_list()");
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
 
-    my @fields_defined = $obj->fields_defined( $desc, $values );
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( software_version );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $software_version    = $obj->field_value( 'software_version', $desc, $values );
-    is( $software_version,     950,             "   test field_value(): software_version in file_creator");
+    is( $software_version,     950,                     "   test field_value(): software_version in file_creator");
+
     1
     };
 
@@ -99,6 +104,16 @@ my @event_values_expected_as_read = ( [0, 0, 0, 0], [0, 4, 0, 0], [48, 3, 200, 1
 my $event_i = 0;
 my $cb_event = sub {
     my ($obj, $desc, $values, $memo) = @_;
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( timestamp data xxx17 xxx18 event event_type event_group );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( timestamp data event event_type event_group );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     # not testing timestamp here: we could
 
@@ -123,7 +138,6 @@ my $cb_event = sub {
     is( $event_group_as_read,  $event_values_expected_as_read[$event_i][3],     "   test field_value_as_read(): event_group in event");
 
     ++$event_i;
-
     1
     };
 
@@ -133,12 +147,23 @@ my $cb_device_info = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
     $device_info_got = 1 if ++$device_info_i == 4;
+    # there is also a device_info message near the end of the file, looks identical though
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( timestamp serial_number cum_operating_time xxx31 manufacturer product software_version battery_voltage xxx13 device_index device_type hardware_version battery_status ant_network source_type xxx29 xxx30 battery_level);
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
 
     my  $device_index         = $obj->field_value( 'device_index', $desc, $values );
     my  $device_index_as_read = $obj->field_value_as_read( 'device_index', $desc, $device_index );
 
     if ( $device_index_as_read == 0 ) {
         is( $device_index,          'creator',  "   test field_value(): device_index in device_info");
+
+        # test fields_defined()
+        my @fields_defined     = $obj->fields_defined( $desc, $values );
+        my @fields_defined_exp = qw( timestamp serial_number manufacturer product software_version device_index source_type );
+        is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
         my  $manufacturer         = $obj->field_value( 'manufacturer', $desc, $values );
         is( $manufacturer,          'garmin',   "   test field_value(): manufacturer in device_info");
@@ -162,6 +187,11 @@ my $cb_device_info = sub {
     if ( $device_index_as_read == 1 ) {
         is( $device_index,          'device1',  "   test field_value(): device_index in device_info");
 
+        # test fields_defined()
+        my @fields_defined     = $obj->fields_defined( $desc, $values );
+        my @fields_defined_exp = qw( timestamp manufacturer product software_version device_index device_type source_type );
+        is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
+
         my  $device_type          = $obj->field_value( 'device_type', $desc, $values );
         is( $device_type,           'barometer', "   test field_value(): device_type in device_info");
         my  $device_type_as_read  = $obj->field_value_as_read( 'device_type', $desc, $device_type, $values );
@@ -171,13 +201,18 @@ my $cb_device_info = sub {
     if ( $device_index_as_read == 2 ) {
         is( $device_index,          'device2',  "   test field_value(): device_index in device_info");
 
+        # test fields_defined()
+        my @fields_defined     = $obj->fields_defined( $desc, $values );
+        my @fields_defined_exp = qw( timestamp manufacturer product software_version device_index device_type source_type );
+        is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
+
         my  $device_type          = $obj->field_value( 'device_type', $desc, $values );
         is( $device_type,           'gps',      "   test field_value(): device_type in device_info");
         my  $device_type_as_read  = $obj->field_value_as_read( 'device_type', $desc, $device_type, $values );
         is( $device_type_as_read,   0,          "   test field_value_as_read() with additional arg: device_type in device_info");
 
         my  $product              = $obj->field_value( 'product', $desc, $values );
-        is( $product,               3107, "   test field_value(): product in device_info");
+        is( $product,               3107,       "   test field_value(): product in device_info");
         # ... don't seem to have a name for this one
         my  $product_as_read      = $obj->field_value_as_read( 'product', $desc, $product, $values );
         is( $product_as_read,       3107,       "   test field_value_as_read() with an additional arg: product in device_info");
@@ -192,11 +227,17 @@ my $cb_device_info = sub {
     if ( $device_index_as_read == 3 ) {
         is( $device_index,          'heart_rate',  "   test field_value(): device_index in device_info");
 
+        # test fields_defined()
+        my @fields_defined     = $obj->fields_defined( $desc, $values );
+        my @fields_defined_exp = qw( timestamp device_index device_type source_type );
+        is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
+
         my  $device_type          = $obj->field_value( 'device_type', $desc, $values );
-        is( $device_type,           7,      "   test field_value(): device_type in device_info");
+        is( $device_type,           7,          "   test field_value(): device_type in device_info");
         my  $device_type_as_read  = $obj->field_value_as_read( 'device_type', $desc, $device_type, $values );
         is( $device_type_as_read,   7,          "   test field_value_as_read() with additional arg: device_type in device_info");
     }
+
     1
     };
 
@@ -204,11 +245,14 @@ my $cb_device_settings = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
     # test fields_list()
-    my @fields_list = $obj->fields_list( $desc );
+    my @fields_list     = $obj->fields_list( $desc );
     my @fields_list_exp = qw( utc_offset time_offset autosync_min_time active_time_zone time_mode time_zone_offset backlight_mode date_mode xxx77 lactate_threshold_autodetect_enabled xxx91 number_of_screens xxx106 xxx109 xxx110 xxx111 xxx121 xxx144 xxx170 xxx173 );
     is_deeply( \@fields_list, \@fields_list_exp,  "   test fields_list()");
 
-    my @fields_defined = $obj->fields_defined( $desc, $values );
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( utc_offset time_offset active_time_zone time_mode time_zone_offset backlight_mode date_mode xxx77 lactate_threshold_autodetect_enabled xxx91 xxx106 xxx109 xxx110 xxx111 xxx121 xxx144 xxx170 );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $utc_offset          = $obj->field_value( 'utc_offset', $desc, $values );
     is( $utc_offset,           0,               "   test field_value(): utc_offset in device_settings");
@@ -251,16 +295,21 @@ my $cb_device_settings = sub {
     my  $lactate_threshold_autodetect_enabled_as_read  = $obj->field_value_as_read( 'lactate_threshold_autodetect_enabled', $desc, $lactate_threshold_autodetect_enabled );
     is( $lactate_threshold_autodetect_enabled_as_read,   1,         "   test field_value_as_read(): lactate_threshold_autodetect_enabled in device_settings");
 
-    # my  $data                = $obj->field_value( 'data', $desc, $values );
-    #is( $data,                 'manual',        "   test field_value(): data in device_settings");
-    #my  $data_as_read        = $obj->field_value_as_read( 'data', $desc, $data, $values );
-    #is( $data_as_read,         0,               "   test field_value_as_read() with additional arg: data in device_settings");
-
     1
     };
 
 my $cb_user_profile = sub {
     my ($obj, $desc, $values, $memo) = @_;
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( friendly_name wake_time sleep_time weight user_running_step_length user_walking_step_length gender age height language elev_setting weight_setting resting_heart_rate default_max_biking_heart_rate default_max_heart_rate hr_setting speed_setting dist_setting power_setting activity_class position_setting temperature_setting height_setting xxx44 xxx45 xxx57 );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( friendly_name wake_time sleep_time weight gender age height language elev_setting weight_setting resting_heart_rate default_max_biking_heart_rate default_max_heart_rate hr_setting speed_setting dist_setting power_setting activity_class position_setting temperature_setting height_setting xxx44 xxx45 xxx57 );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $friendly_name           = $obj->field_value( 'friendly_name', $desc, $values );
     is( $friendly_name,            101,         "   test field_value(): friendly_name in user_profile");
@@ -363,6 +412,16 @@ my $cb_user_profile = sub {
 my $cb_sport = sub {
     my ($obj, $desc, $values, $memo) = @_;
 
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( name sport sub_sport xxx15 xxx17 xxx18 );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( name sport sub_sport xxx15 xxx17 xxx18 );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
+
     my  $sport              = $obj->field_value( 'sport', $desc, $values );
     is( $sport,               'cycling',        "   test field_value(): sport in sport");
     my  $sport_as_read      = $obj->field_value_as_read( 'sport', $desc, $sport );
@@ -383,6 +442,16 @@ my $cb_sport = sub {
 
 my $cb_zones_target = sub {
     my ($obj, $desc, $values, $memo) = @_;
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( xxx254 functional_threshold_power max_heart_rate threshold_heart_rate hr_calc_type pwr_calc_type );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( xxx254 functional_threshold_power threshold_heart_rate hr_calc_type pwr_calc_type );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $functional_threshold_power          = $obj->field_value( 'functional_threshold_power', $desc, $values );
     is( $functional_threshold_power,           200,     "   test field_value(): functional_threshold_power in zones_target");
@@ -415,6 +484,16 @@ my $cb_lap = sub {
 
     # the *.csv seems to indicate there is also enhanced_avg_speed, enhanced_max_speed
     # look into the python profile to see if I am missing some fields
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( timestamp start_time start_position_lat start_position_long end_position_lat end_position_long total_elapsed_time total_timer_time total_distance total_cycles nec_lat nec_long swc_lat swc_long total_work time_standing avg_left_power_phase avg_left_power_phase_peak avg_right_power_phase avg_right_power_phase_peak avg_power_position max_power_position total_grit avg_flow message_index total_calories total_fat_calories avg_speed max_speed avg_power max_power total_ascent total_descent normalized_power left_right_balance wkt_step_index stand_count avg_vam enhanced_avg_respiration_rate enhanced_max_respiration_rate xxx143 xxx145 jump_count xxx155 event event_type avg_heart_rate max_heart_rate avg_cadence max_cadence intensity lap_trigger sport event_group sub_sport avg_temperature max_temperature avg_fractional_cadence max_fractional_cadence total_fractional_cycles avg_left_torque_effectiveness avg_right_torque_effectiveness avg_left_pedal_smoothness avg_right_pedal_smoothness avg_combined_pedal_smoothness avg_left_pco avg_right_pco avg_cadence_position max_cadence_position min_temperature xxx152 );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( timestamp start_time start_position_lat start_position_long end_position_lat end_position_long total_elapsed_time total_timer_time total_distance nec_lat nec_long swc_lat swc_long total_grit avg_flow message_index total_calories avg_speed max_speed total_ascent total_descent avg_vam xxx145 jump_count xxx155 event event_type lap_trigger sport sub_sport avg_temperature max_temperature min_temperature );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $timestamp          = $obj->field_value( 'timestamp', $desc, $values );
     is( $timestamp,           '2022-11-19T22:12:47Z',       "   test field_value(): timestamp in lap");
@@ -550,6 +629,7 @@ my $cb_lap = sub {
     is( $min_temperature,           2,                  "   test field_value(): min_temperature in lap");
     my  $min_temperature_as_read  = $obj->field_value_as_read( 'min_temperature', $desc, $min_temperature );
     is( $min_temperature_as_read,   2,                  "   test field_value_as_read(): min_temperature in lap");
+
     1
     };
 
@@ -558,6 +638,16 @@ my $cb_session = sub {
 
     # the *.csv seems to indicate there is also enhanced_avg_speed, enhanced_max_speed
     # look into the python profile to see if I am missing some fields
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( timestamp start_time start_position_lat start_position_long total_elapsed_time total_timer_time total_distance total_cycles nec_lat nec_long swc_lat swc_long xxx38 xxx39 total_work time_standing avg_left_power_phase avg_left_power_phase_peak avg_right_power_phase avg_right_power_phase_peak avg_power_position max_power_position training_load_peak total_grit avg_flow message_index total_calories total_fat_calories avg_speed max_speed avg_power max_power total_ascent total_descent first_lap_index num_laps normalized_power training_stress_score intensity_factor left_right_balance threshold_power stand_count avg_vam xxx151 enhanced_avg_respiration_rate enhanced_max_respiration_rate xxx177 xxx178 xxx179 enhanced_min_respiration_rate jump_count xxx196 event event_type sport sub_sport avg_heart_rate max_heart_rate avg_cadence max_cadence total_training_effect event_group trigger avg_temperature max_temperature avg_fractional_cadence max_fractional_cadence total_fractional_cycles avg_left_torque_effectiveness avg_right_torque_effectiveness avg_left_pedal_smoothness avg_right_pedal_smoothness avg_combined_pedal_smoothness sport_index avg_left_pco avg_right_pco avg_cadence_position max_cadence_position total_anaerobic_training_effect xxx138 min_temperature xxx184 xxx185 xxx188 xxx202 );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( timestamp start_time start_position_lat start_position_long total_elapsed_time total_timer_time total_distance nec_lat nec_long swc_lat swc_long xxx38 xxx39 training_load_peak total_grit avg_flow message_index total_calories avg_speed max_speed total_ascent total_descent first_lap_index num_laps avg_vam xxx178 jump_count xxx196 event event_type sport sub_sport total_training_effect trigger avg_temperature max_temperature total_anaerobic_training_effect xxx138 min_temperature xxx184 xxx188 );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $timestamp          = $obj->field_value( 'timestamp', $desc, $values );
     is( $timestamp,           '2022-11-19T22:16:52Z',       "   test field_value(): timestamp in session");
@@ -742,6 +832,16 @@ my $cb_session = sub {
 
 my $cb_activity = sub {
     my ($obj, $desc, $values, $memo) = @_;
+
+    # test fields_list()
+    my @fields_list     = $obj->fields_list( $desc );
+    my @fields_list_exp = qw( timestamp total_timer_time local_timestamp num_sessions type event event_type event_group );
+    is_deeply( \@fields_list, \@fields_list_exp,        "   test fields_list()");
+
+    # test fields_defined()
+    my @fields_defined     = $obj->fields_defined( $desc, $values );
+    my @fields_defined_exp = qw( timestamp total_timer_time local_timestamp num_sessions type event event_type );
+    is_deeply( \@fields_defined, \@fields_defined_exp,  "   test fields_defined()");
 
     my  $timestamp                 = $obj->field_value( 'timestamp', $desc, $values );
     is( $timestamp,                  '2022-11-19T22:16:52Z',    "   test field_value(): timestamp in activity");
