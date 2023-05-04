@@ -49,7 +49,6 @@ The module also provides a script to read and print the contents of FIT files (L
 =cut
 
 use Carp qw/ croak /;
-use Clone;
 use FileHandle;
 use POSIX qw(BUFSIZ);
 use Time::Local;
@@ -6708,6 +6707,8 @@ The main use for c<clone()> is immediately after C<new()>, and C<file()>, to cre
 
 sub clone {
     my $self = shift;
+
+    require Clone;
     my $clone = Clone::clone( $self );
     return $clone
 }

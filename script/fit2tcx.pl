@@ -22,6 +22,9 @@ C<fit2tcx.pl> reads the contents of a I<$fit_activity_file> and converts it to c
 
 =cut
 
+use FindBin;
+use lib $FindBin::Bin;
+
 use Geo::FIT;
 use POSIX qw(strftime);
 use IO::Handle;
@@ -46,7 +49,7 @@ if ($version) {
 }
 die usage() if $help;
 
-my ($from, $to);
+my ($from, $to) = qw(- -);
 if (@ARGV) {
     $from = shift @ARGV;
     @ARGV and $to = shift @ARGV
