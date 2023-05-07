@@ -8139,15 +8139,20 @@ sub fields_list {
     my %opts = @_;
     croak "argument to fields_list() does not look like a data descriptor hash" if ref $desc ne 'HASH';
 
-    my (@keys, %fields, @fields_sorted);
+    my (@keys, %fields, @fields);
+
     @keys = grep /^i_/, keys %$desc;
     @keys = grep !/^i_unknown/, @keys unless $opts{keep_unknown};
-    %fields = %$desc{ @keys };
+
+    # %fields = %$desc{ @keys };
+    for my $key (@keys) {                   # hash slices not supported in versions prior to 5.20
+        $fields{$key} = $desc->{$key};
+    }
 
     # sort for easy comparison with values aref passed to callbacks
-    @fields_sorted = sort { $fields{$a} <=> $fields{$b} } keys %fields;
-    map s/^i_//, @fields_sorted;
-    return @fields_sorted
+    @fields = sort { $fields{$a} <=> $fields{$b} } keys %fields;
+    map s/^i_//, @fields;
+    return @fields
 }
 
 =over 4
