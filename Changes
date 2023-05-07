@@ -1,5 +1,8 @@
 Revision history for Geo-FIT
 
+1.10 [2023-05-07]
+    Fix for backward compatibility with Perl versions prior to 5.20 in fields_list() method
+
 1.09 [2023-05-05]
     New method: fields_defined()
 
