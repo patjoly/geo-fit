@@ -2,7 +2,7 @@ package Geo::FIT;
 use strict;
 use warnings;
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 =encoding utf-8
 
@@ -9113,7 +9113,7 @@ Please visit the project page at: L<https://github.com/patjoly/geo-fit>.
 
 =head1 VERSION
 
-1.11
+1.12
 
 =head1 LICENSE AND COPYRIGHT
 
