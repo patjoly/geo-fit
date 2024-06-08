@@ -20,6 +20,8 @@ fit2tcx.pl - script to convert a FIT file to a TCX file
 
 C<fit2tcx.pl> reads the contents of a I<$fit_activity_file> and converts it to correspoding TCX format. If <$new_filename> is provided, writes the resulting TCX content to it, otherwise prints the content to standard output.
 
+Will raise an exception if the I<$fit_activity_file> already has a C<.tcx> extension.
+
 =cut
 
 use FindBin;
@@ -53,6 +55,9 @@ my ($from, $to) = qw(- -);
 if (@ARGV) {
     $from = shift @ARGV;
     @ARGV and $to = shift @ARGV
+}
+if ($from =~ /\.tcx\s*$/i) {
+    die "skipped converting $from: already has *.tcx extension and likely not a FIT file"
 }
 
 # consider adding $double_precision to GetOptions(), renaming $pf to $print_format
