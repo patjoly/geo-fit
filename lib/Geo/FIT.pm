@@ -421,6 +421,7 @@ my %named_type = (
         'chrono_shot_data' => 388,
         'hsa_configuration_data' => 389,
         'dive_apnea_alarm' => 393,
+        'skin_temp_overnight' => 398,
         'hsa_wrist_temperature_data' => 409, # Message number for the HSA wrist temperature data message
         'mfg_range_min' => 0xFF00, # 0xFF00 - 0xFFFE reserved for manufacturer specific messages
         'mfg_range_max' => 0xFFFE,
@@ -1558,6 +1559,7 @@ my %named_type = (
         'nike' => 326,
         'magicshine' => 327,
         'ictrainer' => 328,
+        'absolute_cycling' => 329,
         'actigraphcorp' => 5759,
     },
 
@@ -1979,6 +1981,8 @@ my %named_type = (
         'lily2' => 4380,
         'instinct_2x' => 4394,
         'vivoactive5' => 4426,
+        'fr165' => 4432,
+        'fr165_music' => 4433,
         'descent_t2' => 4442,
         'hrm_fit' => 4446,
         'marq_gen2_commander' => 4472,
@@ -2461,8 +2465,12 @@ my %named_type = (
         'qom' => 6,
         'pr' => 7,
         'goal' => 8,
-        'rival' => 9,
+        'carrot' => 9,
         'club_leader' => 10,
+        'rival' => 11,
+        'last' => 12,
+        'recent_best' => 13,
+        'course_record' => 14,
     },
 
     'segment_delete_status' => +{
@@ -5299,6 +5307,8 @@ my %msgtype_by_name = (
         183 => +{'name' => 'jump_count'},
         186 => +{'name' => 'avg_grit', 'unit' => 'kGrit'},
         187 => +{'name' => 'avg_flow', 'unit' => 'Flow'},
+        192 => +{'name' => 'workout_feel'},                     # A 0-100 scale representing how a user felt while performing a workout. Low values are considered feeling bad, while high values are good.
+        193 => +{'name' => 'workout_rpe'},                      # Common Borg CR10 / 0-10 RPE scale, multiplied 10x.. Aggregate score for all workouts in a single session.
         194 => +{'name' => 'avg_spo2',   'unit' => 'percent'},  # Average SPO2 for the monitoring session
         195 => +{'name' => 'avg_stress', 'unit' => 'percent'},  # Average stress for the monitoring session
         197 => +{'name' => 'sdrr_hrv',   'unit' => 'mS'},       # Standard deviation of R-R interval (SDRR) - Heart rate variability measure most useful for wellness users.
@@ -6758,6 +6768,14 @@ my %msgtype_by_name = (
         15 => +{ 'name' => 'average_stress_during_sleep' }, # Excludes stress during awake periods in the sleep window
     },
 
+    'skin_temp_overnight' => +{
+        253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
+        0 => +{'name' => 'local_timestamp', 'type_name' => 'local_date_time'},
+        1 => +{'name' => 'average_deviation'},       # The average overnight deviation from baseline temperature in degrees C
+        2 => +{'name' => 'average_7_day_deviation'}, # The average 7 day overnight deviation from baseline temperature in degrees C
+        4 => +{'name' => 'nightly_value'},           # Final overnight temperature value
+    },
+
     'pad' => +{
         0 => +{'name' => 'pad'},
     },
@@ -7110,7 +7128,7 @@ returns a string representing the .FIT profile version on which this class based
 
 =cut
 
-my $profile_current  = '21.133';
+my $profile_current  = '21.141';
 my $protocol_current = '2.3';       # is there such a thing as current protocol for the class?
                                     # don't think so, pod was removed for protocol_* above
 
