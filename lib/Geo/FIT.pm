@@ -7102,7 +7102,7 @@ C<clone()> is experimental and support for it may be removed at any time. Use wi
 
 It also does not return a full deep copy if any callbacks are registered, it creates a reference to them. There is no known way to make deep copies of anonymous subroutines in Perl (if you know of one, please make a pull request).
 
-The main use for c<clone()> is immediately after C<new()>, and C<file()>, to create a copy for later use.
+The main use for C<clone()> is immediately after C<new()>, and C<file()>, to create a copy for later use.
 
 =back
 
