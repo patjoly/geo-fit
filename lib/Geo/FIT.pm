@@ -7818,7 +7818,7 @@ sub data_message_callback {
 
 =item data_message_callback_by_num(I<message number>, I<callback function>[, I<callback data>, ...])
 
-register a function I<callback function> which is called when a data message with the messag number I<message number> is fetched.
+register a function I<callback function> which is called when a data message with the message number I<message number> is fetched.
 
 =back
 
@@ -8562,7 +8562,7 @@ sub fields_list {
 
 =item fields_defined( $descriptor, $values )
 
-Given a data message descriptor (I<$descriptor>) and a corresponding data array reference of values (I<$values>), returns the list of fields whose value is defined. Unknow field names are never listed.
+Given a data message descriptor (I<$descriptor>) and a corresponding data array reference of values (I<$values>), returns the list of fields whose value is defined. Unknown field names are never listed.
 
 =back
 
@@ -8588,7 +8588,7 @@ sub fields_defined {
 
 Returns the value of the field named I<$field> (a string).
 
-The other arguments consist of the data message descriptor (I<$descriptor>, a hash reference) and the values fetched from a data message (I<$values>, an array reference). These are simply the references passed to data message callbacks by C<fetch()>, if any are registered, and are simply to be passed on to this method (please do not modifiy them).
+The other arguments consist of the data message descriptor (I<$descriptor>, a hash reference) and the values fetched from a data message (I<$values>, an array reference). These are simply the references passed to data message callbacks by C<fetch()>, if any are registered, and are simply to be passed on to this method (please do not modify them).
 
 For example, we can define and register a callback for C<file_id> data messages and get the name of the manufacturer of the device that recorded the FIT file:
 
@@ -9228,7 +9228,7 @@ of a callback function and callback data, only if a C<callback> is registered.
 
 =item C<endian> => I<endian>
 
-of multi-octets data in this message, where 0 for littel-endian and 1 for big-endian.
+of multi-octets data in this message, where 0 for little-endian and 1 for big-endian.
 
 =item C<template> => I<template for unpack>
 
@@ -9299,7 +9299,7 @@ The return value of the function becomes the return value of C<fetch>. It is exp
 
 =head2 Developer data
 
-Fields in devloper data are given names of the form I<developer data index>C<_>I<field definition number>C<_>I<converted field name>, and related informations are included I<data message descriptors> in the same way as the fields defined in the global .FIT profile.
+Fields in developer data are given names of the form I<developer data index>C<_>I<field definition number>C<_>I<converted field name>, and related informations are included I<data message descriptors> in the same way as the fields defined in the global .FIT profile.
 
 Each I<converted field name> is made from the value of C<field_name> field in the corresponding I<field description message>, after the following conversion rules:
 
