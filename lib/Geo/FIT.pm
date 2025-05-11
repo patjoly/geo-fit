@@ -6497,7 +6497,7 @@ my %msgtype_by_name = (
         8  => +{'name' => 'max_met_category', 'type_name' => 'max_met_category'},
         9  => +{'name' => 'calibrated_data',  'type_name' => 'bool'},                      # Indicates if calibrated data was used in the calculation
         12 => +{'name' => 'hr_source',        'type_name' => 'max_met_heart_rate_source'}, # Indicates if the estimate was obtained using a chest strap or wrist heart rate
-        13 => +{'name' => 'speed_source',     'type_name' => 'max_met_speed_source'},      # Indidcates if the estimate was obtained using onboard GPS or connected GPS
+        13 => +{'name' => 'speed_source',     'type_name' => 'max_met_speed_source'},      # Indicates if the estimate was obtained using onboard GPS or connected GPS
     },
 
     'hsa_body_battery_data' => +{       # Body battery data used for HSA custom data logging
@@ -6672,7 +6672,7 @@ my %msgtype_by_name = (
         25 => +{ 'name' => 'hang_time',        'unit' => 's', 'scale' => 1000 },     # Time spent neither ascending nor descending
     },
 
-    'aad_accel_features' => +{    # Number of acclerometer zero crossings summed over the specified time interval
+    'aad_accel_features' => +{    # Number of accelerometer zero crossings summed over the specified time interval
         253 => +{'name' => 'timestamp', 'type_name' => 'date_time'},
         0 => +{'name' => 'time', 'unit' => 's'},    # Time interval length in seconds
         1 => +{'name' => 'energy_total'},           # Total accelerometer energy in the interval
